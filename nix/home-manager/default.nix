@@ -90,6 +90,11 @@ in
       name = "Takuya Matsumoto";
       email = "66290370+takuya-0826@users.noreply.github.com";
     };
+    # グローバル gitignore (~/.config/git/ignore に出力される)。
+    # Claude Code がリポジトリごとに作る settings.local.json の誤コミット防止。
+    ignores = [
+      "**/.claude/settings.local.json"
+    ];
   };
 
   programs.wezterm = import ./programs/wezterm/default.nix;
@@ -224,6 +229,23 @@ in
     source = ./programs/zellij/layouts;
     recursive = true;
   };
+
+  # Zellij 本体設定 (旧 Mac から移植)。 zellij は初回起動時に config.kdl を自動生成
+  # するが、 それは既定値のダンプなので上書きしてよい。 差分は theme
+  # (catppuccin-mocha / ghostty と統一) / pane_frames false / default_layout compact
+  # / session_serialization true / show_startup_tips false の 5 点。
+  # session_serialization は zj-project のタブ (cwd・コマンド) を再起動後に復活させる。
+  xdg.configFile."zellij/config.kdl".source = ./programs/zellij/config.kdl;
+
+  # Ghostty (常用ターミナル、 旧 Mac から移植)。 JetBrainsMono Nerd Font +
+  # CJK をヒラギノ角ゴ ProN にマップ + Catppuccin Mocha + JIS キーボード向け
+  # キーバインド。 フォントは homebrew cask font-jetbrains-mono-nerd-font で入る。
+  xdg.configFile."ghostty/config".source = ./programs/ghostty/config;
+
+  # starship のプロンプト定義 (旧 Mac から移植)。 ファイルを置くだけでは有効に
+  # ならない。 有効化するには programs/zsh/default.nix の oh-my-zsh.theme を外して
+  # starship init を足す必要がある (現在は robbyrussell テーマのまま)。
+  xdg.configFile."starship.toml".source = ./programs/starship/starship.toml;
 
   # gh-review-watcher の hook 設定
   xdg.configFile."gh-review-watcher/config.toml" = {

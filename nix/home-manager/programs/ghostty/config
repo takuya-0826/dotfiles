@@ -1,0 +1,37 @@
+# === Font ===
+font-family = "JetBrainsMono Nerd Font"
+font-size = 14
+font-thicken = true
+adjust-cell-height = 15%
+
+# === CJK Font Map ===
+font-codepoint-map = U+3000-U+303F,U+3040-U+309F,U+30A0-U+30FF,U+FF00-U+FFEF,U+4E00-U+9FFF,U+3400-U+4DBF,U+20000-U+2A6DF=Hiragino Kaku Gothic ProN
+
+# === Theme ===
+theme = "Catppuccin Mocha"
+
+# === Window ===
+window-padding-x = 8
+window-padding-y = 4
+macos-titlebar-style = tabs
+background-opacity = 0.95
+unfocused-split-opacity = 0.85
+
+# === Cursor ===
+cursor-style = block
+cursor-style-blink = false
+shell-integration-features = cursor,sudo,title
+
+# === Performance ===
+copy-on-select = clipboard
+
+# === macOS ===
+macos-option-as-alt = true
+
+# === Keybindings ===
+# JISキーボードだと super+ctrl+= が押しにくいので別キーに割り当て
+keybind = super+ctrl+e=equalize_splits
+keybind = opt+left=text:\x1b[1;3D
+keybind = opt+right=text:\x1b[1;3C
+keybind = opt+up=text:\x1b[1;3A
+keybind = opt+down=text:\x1b[1;3B
