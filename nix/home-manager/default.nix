@@ -74,6 +74,24 @@ in
   };
 
   programs.home-manager.enable = true;
+
+  # git identity。 手で `git config --global` すると新 PC で消えるので nix 管理下に置く。
+  #
+  # メールは GitHub の noreply アドレス。 この dotfiles は public repo なので、
+  # 会社メールを刻印すると公開履歴に永久に残る (収集 bot の的にもなる)。
+  # noreply でも GitHub 上の表示 (アイコン / profile リンク / contribution) は同じ。
+  #
+  # 注意: home-manager はこれを ~/.config/git/config に書く。 git は
+  # ~/.gitconfig が存在するとそちらを優先して ~/.config/git/config を**無視する**
+  # ので、 `git config --global` は使わないこと (使うと下記の設定が死ぬ)。
+  programs.git = {
+    enable = true;
+    settings.user = {
+      name = "Takuya Matsumoto";
+      email = "66290370+takuya-0826@users.noreply.github.com";
+    };
+  };
+
   programs.wezterm = import ./programs/wezterm/default.nix;
 
   # mise: ランタイム管理 (旧 volta の置き換え)。 node は latest をグローバル固定。
