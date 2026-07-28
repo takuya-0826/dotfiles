@@ -13,7 +13,7 @@ description: "Check own open PRs for conflicts and auto-fix when safe (lockfile 
 ## 引数
 
 - 引数なし: 自分のopen PR全件をチェック
-- `<owner/repo>#<num>`: 単一PRのみ処理（例: `EdV4H/dotfiles#42`）
+- `<owner/repo>#<num>`: 単一PRのみ処理（例: `takuya-0826/dotfiles#42`）
 
 ## Behavior
 

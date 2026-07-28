@@ -18,7 +18,6 @@ TOKEN_FILE="$HOME/.config/renovate/oauth-token"
 # 対象リポジトリ。増やす時はここに足す。
 REPOS=(
   "Atrae/wevox-mono-web"
-  "EdV4H/usketch"
 )
 
 LOG_FILE="/tmp/renovate-scheduled.log"

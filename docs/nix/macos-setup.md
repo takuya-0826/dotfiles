@@ -36,7 +36,7 @@ sh <(curl -L https://nixos.org/nix/install)
 ### 2. リポジトリのクローン
 
 ```bash
-git clone https://github.com/EdV4H/dotfiles ~/dotfiles
+git clone https://github.com/takuya-0826/dotfiles ~/dotfiles
 cd ~/dotfiles
 ```
 

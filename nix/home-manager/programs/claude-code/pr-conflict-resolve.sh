@@ -92,7 +92,7 @@ find_local_clone() {
   local name="${repo#*/}"
 
   # ~/dotfiles 直接マッチ
-  if [ "$repo" = "EdV4H/dotfiles" ] && [ -d "$HOME/dotfiles/.git" ]; then
+  if [ "$repo" = "takuya-0826/dotfiles" ] && [ -d "$HOME/dotfiles/.git" ]; then
     echo "$HOME/dotfiles"
     return 0
   fi

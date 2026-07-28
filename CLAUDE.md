@@ -190,7 +190,7 @@ MIGRATION_DRY_RUN=1 ~/.local/bin/migration-export
 curl -fsSL https://install.determinate.systems/nix | sh -s -- install
 
 # 2. dotfiles を clone (gh CLI 未認証段階なので https 経由)
-git clone https://github.com/EdV4H/dotfiles ~/dotfiles
+git clone https://github.com/takuya-0826/dotfiles ~/dotfiles
 cd ~/dotfiles
 
 # 2.5. 会社端末で Netskope (SWG) が常駐している場合、 cache.nixos.org の HTTPS を
