@@ -256,6 +256,12 @@
     export PIP_INDEX_URL="https://pypi.flatt.tech/simple/"
     export UV_INDEX_URL="https://pypi.flatt.tech/simple/"
     # ---------------------------------------------------------------------
+
+    # 秘密情報は nix 管理外の ~/.zshrc.secrets (mode 600) に置き、 ここから読むだけ。
+    # この repo は public なので、 トークンを .nix に直接書くと即漏洩する。
+    # 中身: FIGMA_TOKEN / OPENAI_API_KEY (旧 Mac では .zshrc に平文で書かれていた)。
+    # 新しい PC ではこのファイルを別途持ち込む必要がある (nix では再現されない)。
+    [ -f "$HOME/.zshrc.secrets" ] && source "$HOME/.zshrc.secrets"
   '';
 
   # Oh-my-zsh configuration
