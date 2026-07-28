@@ -55,6 +55,16 @@
     ccd = "command claude --dangerously-skip-permissions";
     ccdr = "command claude --dangerously-skip-permissions --remote-control";
 
+    # Claude ランチャー (旧 Mac から引き継ぎ)。 _claude_in は initContent 定義。
+    # cd 先を固定するので、 今いる場所に関係なく同じプロジェクトで起動できる。
+    pm = "_claude_in ~/Atrae";
+    frank = "_claude_in ~/Atrae/frank";
+    gordon = "_claude_in ~/Atrae/frank/apps/gordon";
+
+    # zellij セッション (dev-hub)
+    cca = "zellij attach dev-hub";
+    cchub = "zellij --session dev-hub --new-session-with-layout dev-hub";
+
     # Neovim
     v = "nvim";
     vi = "nvim";
@@ -188,6 +198,15 @@
       command claude "$@"
     }
 
+    # コンテキスト固定ランチャー。 どこから打っても claude の着地先が一定になる。
+    # サブシェル ( ) で cd するので、 終了後は元の cwd に戻る。
+    # 対応する alias は shellAliases の "Claude ランチャー" を参照。
+    function _claude_in() {
+      local dir="$1"
+      shift
+      ( cd "$dir" && claude "$@" )
+    }
+
     # Find and replace in current directory
     function find-replace() {
       if [ $# -ne 2 ]; then
@@ -213,6 +232,23 @@
     export LC_ALL="en_US.UTF-8"
 
     # node / ni / ccusage は mise (programs.mise) がグローバル管理する。
+
+    # --- 会社端末 (Atrae) 必須の設定 -------------------------------------
+    # 忘れると npm / pip / uv が TLS エラーや 403 で壊れる。
+    # sessionVariables ではなく envExtra (.zshenv) に置くのは、 対話シェル以外
+    # (エディタや CI ツールから起動される非対話 shell) でも効かせる必要があるため。
+
+    # Netskope (SWG) が TLS を MITM するので、 その CA を node に信頼させる。
+    # 証明書は Jamf が配布するため、 ファイルが在るときだけ設定する
+    # (Netskope が入っていない端末でも壊れないように)。
+    if [ -f "/Library/Application Support/Netskope/STAgent/data/nscacert.pem" ]; then
+      export NODE_EXTRA_CA_CERTS="/Library/Application Support/Netskope/STAgent/data/nscacert.pem"
+    fi
+
+    # Takumi Guard PyPI プロキシ (社内で許可された PyPI ミラー)。
+    export PIP_INDEX_URL="https://pypi.flatt.tech/simple/"
+    export UV_INDEX_URL="https://pypi.flatt.tech/simple/"
+    # ---------------------------------------------------------------------
   '';
 
   # Oh-my-zsh configuration
