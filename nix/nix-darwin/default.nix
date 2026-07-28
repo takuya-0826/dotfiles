@@ -67,6 +67,10 @@
       "font-jetbrains-mono-nerd-font"
       "visual-studio-code"
       "session-manager-plugin"
+      # 旧 Mac では直ダウンロードで入れていたため brew leaves / brew list --cask
+      # ベースの棚卸しから構造的に漏れていた 2 件 (2026-07-29 の環境差分照合で発見)。
+      "typeless" # 音声入力。 旧 Mac で毎日使用
+      "cursor"
     ];
   };
 
