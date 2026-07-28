@@ -61,9 +61,9 @@
     frank = "_claude_in ~/Atrae/frank";
     gordon = "_claude_in ~/Atrae/frank/apps/gordon";
 
-    # zellij セッション (dev-hub)
-    cca = "zellij attach dev-hub";
-    cchub = "zellij --session dev-hub --new-session-with-layout dev-hub";
+    # cca / cchub (zellij dev-hub セッション) は意図的に未登録。
+    # dev-hub レイアウトは旧 Mac 側で layouts/_archived/ に引退させられていた。
+    # zellij タブの起動は ~/.local/bin/zj-project (frank|ats|forms|general) を使う。
 
     # Neovim
     v = "nvim";

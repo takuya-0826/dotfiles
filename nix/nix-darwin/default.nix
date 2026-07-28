@@ -96,6 +96,42 @@
     };
   };
 
+  # マシン性能ロガー。 1 分ごとに ~/mac_perf.log へ追記し、 perf-log-analyst
+  # エージェントがそれを読んでサーマルスロットリング等を分析する。
+  # スクリプト実体は home-manager が ~/.local/bin に置く (旧 Mac から移植)。
+  launchd.user.agents.mac-perf-logger = {
+    serviceConfig = {
+      ProgramArguments = [
+        "/bin/zsh"
+        "/Users/takuyamatsumoto/.local/bin/mac-perf-logger.sh"
+      ];
+      StartInterval = 60;
+      RunAtLoad = true;
+      StandardErrorPath = "/Users/takuyamatsumoto/Library/Logs/mac-perf-logger.err";
+    };
+  };
+
+  # brain vault (Obsidian) の無人スイープ。 毎週金曜 17:00 に走り、
+  # ~/brain/_system/sweep-reports/ にレポートを出す。
+  # sweep.sh は brain repo 側に入っているので、 ~/brain が clone 済みである前提。
+  launchd.user.agents.brain-sweep = {
+    serviceConfig = {
+      ProgramArguments = [
+        "/bin/zsh"
+        "/Users/takuyamatsumoto/brain/_system/sweep.sh"
+      ];
+      StartCalendarInterval = [
+        {
+          Weekday = 5;
+          Hour = 17;
+          Minute = 0;
+        }
+      ];
+      StandardOutPath = "/Users/takuyamatsumoto/brain/_system/logs/launchd.log";
+      StandardErrorPath = "/Users/takuyamatsumoto/brain/_system/logs/launchd.log";
+    };
+  };
+
   # 日報 (daily-report) / PR コンフリクト自動解決 (pr-conflict-check) /
   # Renovate 自動処理 (renovate-scheduled) の launchd エージェントは意図的に未登録。
   # スクリプト自体は home-manager が ~/.local/bin に配置しているので、
