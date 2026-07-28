@@ -95,7 +95,12 @@
     VISUAL = "nvim";
     PAGER = "less";
     LESS = "-R";
-    HAPPY_CLAUDE_PATH = "${config.home.homeDirectory}/.nix-profile/bin/claude";
+    # claude はネイティブ版 (~/.local/bin/claude、 公式インストーラ) を正とする。
+    # nix の pkgs.claude-code も入るが、 envExtra で $HOME/.local/bin を PATH 先頭に
+    # 置いているのでネイティブ版が勝つ。 ネイティブ版は自己更新するため常に新しい
+    # (nix 側は flake.lock 追従なので遅れる)。
+    # happy-coder にも同じ実体を渡さないと、 shell の claude と別バージョンを掴む。
+    HAPPY_CLAUDE_PATH = "${config.home.homeDirectory}/.local/bin/claude";
   };
 
   # Init extra configuration
@@ -220,6 +225,8 @@
   # Environment variables
   envExtra = ''
     # Set PATH
+    # 先頭に置くのは意図的。 claude はネイティブ版 (~/.local/bin/claude) を正とし、
+    # nix の pkgs.claude-code より優先させる (HAPPY_CLAUDE_PATH も同じ実体を指す)。
     export PATH="$HOME/.local/bin:$PATH"
 
     # Load Nix profile
