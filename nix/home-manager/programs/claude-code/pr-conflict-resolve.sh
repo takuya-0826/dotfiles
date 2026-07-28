@@ -2,7 +2,7 @@
 set -euo pipefail
 
 export PATH=$HOME/.local/share/mise/shims:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-export HOME=/Users/yusukemaruyama
+export HOME=/Users/takuyamatsumoto
 
 LOG_FILE="/tmp/pr-conflict-check.log"
 JUDGE_TIMEOUT="${PR_JUDGE_TIMEOUT_SECS:-300}"     # 5min

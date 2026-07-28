@@ -2,7 +2,7 @@
 set -euo pipefail
 
 export PATH=/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-export HOME=/Users/yusukemaruyama
+export HOME=/Users/takuyamatsumoto
 
 LOG_FILE="/tmp/daily-report.log"
 REPORT_DATE=$(date +%Y-%m-%d)
@@ -24,7 +24,7 @@ for dir in "${PROJECTS[@]}"; do
   LOGS=$(cd "$dir" && git log --all \
     --since="$REPORT_DATE 00:00" \
     --until="$(date -v+1d +%Y-%m-%d) 00:00" \
-    --author="EdV4H" --author="Yusuke Maruyama" \
+    --author="takuya-0826" --author="takuya.matsumoto@atrae.co.jp" \
     --pretty=format:"- %h %s (%ar)" \
     2>/dev/null || true)
   if [ -n "$LOGS" ]; then
@@ -43,9 +43,9 @@ fi
 CLAUDE_PROJECTS_DIR="$HOME/.claude/projects"
 SESSION_SUMMARY=""
 if [ -d "$CLAUDE_PROJECTS_DIR" ]; then
-  for proj_dir in "$CLAUDE_PROJECTS_DIR"/-Users-yusukemaruyama-*; do
+  for proj_dir in "$CLAUDE_PROJECTS_DIR"/-Users-takuyamatsumoto-*; do
     [ -d "$proj_dir" ] || continue
-    PROJ_SLUG=$(basename "$proj_dir" | sed 's/^-Users-yusukemaruyama-//; s/-/\//g')
+    PROJ_SLUG=$(basename "$proj_dir" | sed 's/^-Users-takuyamatsumoto-//; s/-/\//g')
 
     # Find session files modified today
     PROJ_SESSIONS=""

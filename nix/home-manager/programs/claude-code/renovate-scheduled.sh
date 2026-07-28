@@ -7,7 +7,7 @@ set -uo pipefail
 # 落ちたら最大2回まで自動修正、直らなければ issue 化）。
 
 export PATH=$HOME/.local/share/mise/shims:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-export HOME=/Users/yusukemaruyama
+export HOME=/Users/takuyamatsumoto
 
 # 非対話 (launchd) では claude のサブスク認証 (ログインキーチェーン) が読めず
 # "Not logged in" になる。`claude setup-token` で発行した長寿命 OAuth トークンを

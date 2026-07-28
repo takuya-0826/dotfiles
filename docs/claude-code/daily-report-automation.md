@@ -45,7 +45,7 @@ find "$HOME/Projects" -maxdepth 3 -name .git -type d
 git log --all \
   --since="$REPORT_DATE 00:00" \
   --until="$(date -v+1d +%Y-%m-%d) 00:00" \
-  --author="EdV4H" --author="Yusuke Maruyama" \
+  --author="takuya-0826" --author="takuya.matsumoto@atrae.co.jp" \
   --pretty=format:"- %h %s (%ar)"
 
 # 3. Claude Code セッションログを収集
@@ -71,7 +71,7 @@ launchd.user.agents.daily-report = {
   serviceConfig = {
     ProgramArguments = [
       "/bin/sh" "-c"
-      "/Users/yusukemaruyama/.local/bin/daily-report"
+      "/Users/takuyamatsumoto/.local/bin/daily-report"
     ];
     StartCalendarInterval = [{ Hour = 3; Minute = 0; }];
     StandardOutPath = "/tmp/daily-report.out.log";

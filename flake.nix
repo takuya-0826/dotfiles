@@ -71,7 +71,7 @@
                         			echo "Updating home-manager..."
                         			nix run nixpkgs#home-manager -- switch --flake .#myHomeConfig
             				echo "Updating nix-darwin..."
-                        			sudo /run/current-system/sw/bin/darwin-rebuild switch --flake .#ATR-LAP-OSX-YUSUKE-MARUYAMA
+                        			sudo /run/current-system/sw/bin/darwin-rebuild switch --flake .#ATR-LAP-OSX-TAKUYA-MATSUMOTO
                         			echo "Update complete!"
                         		''
         );
@@ -89,7 +89,7 @@
         };
       };
 
-      darwinConfigurations.ATR-LAP-OSX-YUSUKE-MARUYAMA = nix-darwin.lib.darwinSystem {
+      darwinConfigurations.ATR-LAP-OSX-TAKUYA-MATSUMOTO = nix-darwin.lib.darwinSystem {
         system = system;
         modules = [ ./nix/nix-darwin/default.nix ];
       };

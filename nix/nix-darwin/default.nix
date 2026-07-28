@@ -8,7 +8,7 @@
   nix.enable = false;
 
   system = {
-    primaryUser = "yusukemaruyama";
+    primaryUser = "takuyamatsumoto";
     stateVersion = 6;
     defaults = {
       NSGlobalDomain.AppleShowAllExtensions = true;
@@ -58,11 +58,11 @@
         "-c"
         ''
           export PATH=/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin
-          cd /Users/yusukemaruyama/dotfiles
+          cd /Users/takuyamatsumoto/dotfiles
           echo "$(date): Starting nix auto update..." >> /tmp/nix-auto-update.log
           nix flake update >> /tmp/nix-auto-update.log 2>&1
-          /Users/yusukemaruyama/.nix-profile/bin/home-manager switch --flake .#myHomeConfig >> /tmp/nix-auto-update.log 2>&1
-          sudo /run/current-system/sw/bin/darwin-rebuild switch --flake .#ATR-LAP-OSX-YUSUKE-MARUYAMA >> /tmp/nix-auto-update.log 2>&1
+          /Users/takuyamatsumoto/.nix-profile/bin/home-manager switch --flake .#myHomeConfig >> /tmp/nix-auto-update.log 2>&1
+          sudo /run/current-system/sw/bin/darwin-rebuild switch --flake .#ATR-LAP-OSX-TAKUYA-MATSUMOTO >> /tmp/nix-auto-update.log 2>&1
           echo "$(date): Update complete." >> /tmp/nix-auto-update.log
         ''
       ];
@@ -77,72 +77,14 @@
     };
   };
 
-  launchd.user.agents.daily-report = {
-    serviceConfig = {
-      ProgramArguments = [
-        "/bin/sh"
-        "-c"
-        ''
-          /Users/yusukemaruyama/.local/bin/daily-report
-        ''
-      ];
-      StartCalendarInterval = [
-        {
-          Hour = 3;
-          Minute = 0;
-        }
-      ];
-      StandardOutPath = "/tmp/daily-report.out.log";
-      StandardErrorPath = "/tmp/daily-report.err.log";
-    };
-  };
-
-  launchd.user.agents.pr-conflict-check = {
-    serviceConfig = {
-      ProgramArguments = [
-        "/bin/sh"
-        "-c"
-        ''
-          /Users/yusukemaruyama/.local/bin/pr-conflict-check
-        ''
-      ];
-      StartCalendarInterval = [
-        {
-          Hour = 8;
-          Minute = 30;
-        }
-      ];
-      # ログイン時にも一度実行。8:30 にPCがスリープ等で起動を逃しても、
-      # 起動後の最初のログインで取り戻せる。スクリプト側で
-      # ~/.cache/pr-conflict-check/last-run-date を見て同日二重実行は抑止する。
-      RunAtLoad = true;
-      StandardOutPath = "/tmp/pr-conflict-check.out.log";
-      StandardErrorPath = "/tmp/pr-conflict-check.err.log";
-    };
-  };
-
-  # Renovate PR を数時間おきに自動処理 (rebase→CI待ち→auto-approve→merge、
-  # 落ちたら自動修正、直らなければ issue 化)。対象 repo は
-  # renovate-scheduled.sh の REPOS 配列で管理。多重起動は script 側の lock で抑止。
-  launchd.user.agents.renovate-scheduled = {
-    serviceConfig = {
-      ProgramArguments = [
-        "/bin/sh"
-        "-c"
-        ''
-          /Users/yusukemaruyama/.local/bin/renovate-scheduled
-        ''
-      ];
-      # 3時間ごと。1回のパスが長引いても launchd は多重起動しない
-      # (前回が動作中なら次の発火は待たされる)。script 側 lock で二重も防止。
-      StartInterval = 10800;
-      StandardOutPath = "/tmp/renovate-scheduled.out.log";
-      StandardErrorPath = "/tmp/renovate-scheduled.err.log";
-    };
-  };
+  # 日報 (daily-report) / PR コンフリクト自動解決 (pr-conflict-check) /
+  # Renovate 自動処理 (renovate-scheduled) の launchd エージェントは意図的に未登録。
+  # スクリプト自体は home-manager が ~/.local/bin に配置しているので、
+  # 必要になったら手動実行するか、ここに agent を書き足して再 switch する。
+  # (元の定義は git log を参照)
 
   security.sudo.extraConfig = ''
-    yusukemaruyama ALL=(ALL) NOPASSWD: /run/current-system/sw/bin/darwin-rebuild
+    takuyamatsumoto ALL=(ALL) NOPASSWD: /run/current-system/sw/bin/darwin-rebuild
   '';
 
   fonts = {

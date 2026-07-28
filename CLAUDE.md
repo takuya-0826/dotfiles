@@ -21,7 +21,7 @@ nix run .#update
 nix run nixpkgs#home-manager -- switch --flake .#myHomeConfig
 
 # Update only nix-darwin configuration
-sudo darwin-rebuild switch --flake .#ATR-LAP-OSX-YUSUKE-MARUYAMA
+sudo darwin-rebuild switch --flake .#ATR-LAP-OSX-TAKUYA-MATSUMOTO
 
 # Update flake inputs
 nix flake update
@@ -37,7 +37,7 @@ nix flake check
 
 # Build without switching
 nix build .#homeConfigurations.myHomeConfig.activationPackage
-nix build .#darwinConfigurations.ATR-LAP-OSX-YUSUKE-MARUYAMA.system
+nix build .#darwinConfigurations.ATR-LAP-OSX-TAKUYA-MATSUMOTO.system
 ```
 
 ## Architecture
@@ -45,7 +45,7 @@ nix build .#darwinConfigurations.ATR-LAP-OSX-YUSUKE-MARUYAMA.system
 ### Flake Structure
 - **flake.nix**: Main entry point defining:
   - Home Manager configuration: `myHomeConfig`
-  - Darwin configuration: `ATR-LAP-OSX-YUSUKE-MARUYAMA`
+  - Darwin configuration: `ATR-LAP-OSX-TAKUYA-MATSUMOTO`
   - Update script app: `.#update`
   - Formatter using treefmt-nix
 
@@ -72,10 +72,10 @@ nix build .#darwinConfigurations.ATR-LAP-OSX-YUSUKE-MARUYAMA.system
 ## Key Configuration Details
 
 ### User Information
-- Username: `yusukemaruyama`
-- Home directory: `/Users/yusukemaruyama`
+- Username: `takuyamatsumoto`
+- Home directory: `/Users/takuyamatsumoto`
 - System: `aarch64-darwin`
-- Machine name: `ATR-LAP-OSX-YUSUKE-MARUYAMA`
+- Machine name: `ATR-LAP-OSX-TAKUYA-MATSUMOTO`
 
 ### Installed Development Tools
 - Version control: git, gh, lazygit

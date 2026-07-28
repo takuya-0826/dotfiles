@@ -112,7 +112,7 @@ nix run .#update
 nix run nixpkgs#home-manager -- switch --flake .#myHomeConfig
 
 # nix-darwin のみ更新
-sudo darwin-rebuild switch --flake .#ATR-LAP-OSX-YUSUKE-MARUYAMA
+sudo darwin-rebuild switch --flake .#ATR-LAP-OSX-TAKUYA-MATSUMOTO
 
 # Nix ファイルのフォーマット
 nix fmt

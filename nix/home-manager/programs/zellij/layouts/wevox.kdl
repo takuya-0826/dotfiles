@@ -2,14 +2,14 @@ layout {
     tab name="Wevox E2E Dev" focus=true {
         pane split_direction="horizontal" {
             pane split_direction="vertical" {
-                pane name="wevox" cwd="/Users/yusukemaruyama/Projects/wevox/wevox" size="50%"
-                pane name="web-progressive" cwd="/Users/yusukemaruyama/Projects/wevox/wevox-mono-web/web-progressive" size="25%"
-                pane name="web-progressive" cwd="/Users/yusukemaruyama/Projects/wevox/wevox-mono-web/web-progressive" size="25%"
+                pane name="wevox" cwd="/Users/takuyamatsumoto/Projects/wevox/wevox" size="50%"
+                pane name="web-progressive" cwd="/Users/takuyamatsumoto/Projects/wevox/wevox-mono-web/web-progressive" size="25%"
+                pane name="web-progressive" cwd="/Users/takuyamatsumoto/Projects/wevox/wevox-mono-web/web-progressive" size="25%"
             }
             pane split_direction="vertical" {
-                pane name="wevox-rest-bff" cwd="/Users/yusukemaruyama/Projects/wevox/wevox-rest-bff" size="50%"
-                pane name="wevox-front" cwd="/Users/yusukemaruyama/Projects/wevox/wevox-front" size="25%"
-                pane name="wevox-front" cwd="/Users/yusukemaruyama/Projects/wevox/wevox-front" size="25%"
+                pane name="wevox-rest-bff" cwd="/Users/takuyamatsumoto/Projects/wevox/wevox-rest-bff" size="50%"
+                pane name="wevox-front" cwd="/Users/takuyamatsumoto/Projects/wevox/wevox-front" size="25%"
+                pane name="wevox-front" cwd="/Users/takuyamatsumoto/Projects/wevox/wevox-front" size="25%"
             }
         }
     }

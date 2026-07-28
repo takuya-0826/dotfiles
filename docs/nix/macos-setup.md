@@ -59,10 +59,10 @@ nix-darwin の launchd エージェントで毎朝 9:00 に自動更新が走る
 launchd.user.agents.nix-auto-update = {
   serviceConfig = {
     ProgramArguments = [ "/bin/sh" "-c" ''
-      cd /Users/yusukemaruyama/dotfiles
+      cd /Users/takuyamatsumoto/dotfiles
       nix flake update
       home-manager switch --flake .#myHomeConfig
-      sudo darwin-rebuild switch --flake .#ATR-LAP-OSX-YUSUKE-MARUYAMA
+      sudo darwin-rebuild switch --flake .#ATR-LAP-OSX-TAKUYA-MATSUMOTO
     '' ];
     StartCalendarInterval = [{ Hour = 9; Minute = 0; }];
   };

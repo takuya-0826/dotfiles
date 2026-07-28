@@ -34,7 +34,7 @@ for dir in "${PROJECTS[@]}"; do
   LOGS=$(cd "$dir" && git log --all \
     --since="$REPORT_DATE 00:00" \
     --until="$NEXT_DATE 00:00" \
-    --author="EdV4H" --author="Yusuke Maruyama" \
+    --author="takuya-0826" --author="takuya.matsumoto@atrae.co.jp" \
     --pretty=format:"- %h %s (%ar)" \
     2>/dev/null || true)
   if [ -n "$LOGS" ]; then
@@ -51,9 +51,9 @@ Extract user/assistant text messages from `~/.claude/projects/` session files mo
 
 ```bash
 CLAUDE_PROJECTS_DIR="$HOME/.claude/projects"
-for proj_dir in "$CLAUDE_PROJECTS_DIR"/-Users-yusukemaruyama-*; do
+for proj_dir in "$CLAUDE_PROJECTS_DIR"/-Users-takuyamatsumoto-*; do
   [ -d "$proj_dir" ] || continue
-  PROJ_SLUG=$(basename "$proj_dir" | sed 's/^-Users-yusukemaruyama-//; s/-/\//g')
+  PROJ_SLUG=$(basename "$proj_dir" | sed 's/^-Users-takuyamatsumoto-//; s/-/\//g')
 
   for session_file in $(find "$proj_dir" -name "*.jsonl" -maxdepth 1 -mtime -1 2>/dev/null); do
     jq -r '
@@ -128,4 +128,4 @@ Format:
 - Logs are written to `/tmp/daily-report.log`
 - If no git activity is found, report "活動なし" in the activity section
 - Notion 日報 DB data_source_id: `64bb8b84-6d5b-431c-831f-1069f737f1b3`
-- Session log files are at `~/.claude/projects/-Users-yusukemaruyama-{ProjectPath}/*.jsonl`
+- Session log files are at `~/.claude/projects/-Users-takuyamatsumoto-{ProjectPath}/*.jsonl`

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 export PATH=$HOME/.local/share/mise/shims:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-export HOME=/Users/yusukemaruyama
+export HOME=/Users/takuyamatsumoto
 
 LOG_FILE="/tmp/pr-conflict-check.log"
 DRY_RUN="${PR_CONFLICT_DRY_RUN:-0}"
@@ -153,7 +153,7 @@ for pr in "${PR_LINES[@]}"; do
   # サブスクリプトに委譲。stdout の最終行が結果コード。
   # stdin は明示的に /dev/null へ切る (claude 等が親の stdin を吸わないように)。
   log "  → invoking pr-conflict-resolve"
-  RESOLVE_OUT=$(/Users/yusukemaruyama/.local/bin/pr-conflict-resolve \
+  RESOLVE_OUT=$(/Users/takuyamatsumoto/.local/bin/pr-conflict-resolve \
     --repo "$REPO" --number "$NUM" --url "$URL" \
     --branch "$BRANCH" --base "$BASE" --title "$TITLE" \
     < /dev/null 2>>"$LOG_FILE") || true
