@@ -45,7 +45,9 @@
       "poppler"
       "neonctl" # Ignition の Neon Postgres 操作
       "redis"
-      "python@3.13"
+      # python は mise (programs.mise.globalConfig) で宣言する方に寄せたので
+      # brew の python@3.13 は外した。 宣言先を 1 箇所にするため。
+      # なお pipx が依存で python@3.14 を引き込むので、 それは残る。
       "pipx"
     ];
     casks = [

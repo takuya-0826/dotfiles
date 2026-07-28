@@ -112,6 +112,13 @@ in
     globalConfig = {
       tools = {
         node = "latest";
+        # python も宣言しておく。 宣言しないと `python3` の解決先が Homebrew の
+        # シンボリックリンク任せになり、 「pipx の依存で python@3.14 が入ったから
+        # python3 が 3.14 になる」 という偶然でバージョンが決まってしまう
+        # (2026-07-29 に実際にそうなっていた。 旧 Mac は 3.13 だった)。
+        # mise の python は precompiled build を取るので npm 系の
+        # min-release-age / ignore-scripts 問題とは無関係。
+        python = "3.13";
       };
     };
   };
