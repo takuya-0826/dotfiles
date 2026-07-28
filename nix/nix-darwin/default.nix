@@ -60,6 +60,7 @@
       "amazon-workspaces"
       "claude"
       "codexbar"
+      "chatgpt"
       "obsidian" # brain vault (Obsidian) を開く
       "ghostty" # 常用ターミナル
       "codex" # クロスモデルレビュー用 OpenAI codex CLI
