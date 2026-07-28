@@ -33,8 +33,20 @@
       # (Homebrew CLI 仕様変更) ので、 確認なしで cleanup を走らせる。
       extraFlags = [ "--force-cleanup" ];
     };
+    # cleanup = "uninstall" なので、 ここに書いていない brew パッケージ / cask は
+    # switch のたびに確認なしでアンインストールされる。 手で brew install しても
+    # 次の switch で消えるため、 入れたいものは必ずここに足すこと。
     brews = [
       "goenv"
+      "bun"
+      "herdr" # Claude Code の SessionStart hook が依存
+      "railway"
+      "pandoc"
+      "poppler"
+      "neonctl" # Ignition の Neon Postgres 操作
+      "redis"
+      "python@3.13"
+      "pipx"
     ];
     casks = [
       "docker-desktop"
@@ -48,6 +60,12 @@
       "amazon-workspaces"
       "claude"
       "codexbar"
+      "obsidian" # brain vault (Obsidian) を開く
+      "ghostty" # 常用ターミナル
+      "codex" # クロスモデルレビュー用 OpenAI codex CLI
+      "font-jetbrains-mono-nerd-font"
+      "visual-studio-code"
+      "session-manager-plugin"
     ];
   };
 
