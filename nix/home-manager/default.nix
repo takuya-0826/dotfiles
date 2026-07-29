@@ -95,6 +95,12 @@ in
     ignores = [
       "**/.claude/settings.local.json"
     ];
+
+    # GitHub の HTTPS URL を SSH に自動書き換えする。 旧 Mac の ~/.gitconfig に
+    # あったが、 移行時に取りこぼしていた (2026-07-29 発見)。
+    # これが無いと https://github.com/... で clone した repo が SSH ではなく
+    # HTTPS 認証を要求してくる。
+    settings.url."git@github.com:".insteadOf = "https://github.com/";
   };
 
   programs.wezterm = import ./programs/wezterm/default.nix;

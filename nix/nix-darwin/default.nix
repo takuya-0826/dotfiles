@@ -73,7 +73,19 @@
       # ベースの棚卸しから構造的に漏れていた 2 件 (2026-07-29 の環境差分照合で発見)。
       "typeless" # 音声入力。 旧 Mac で毎日使用
       "cursor"
+      # Microsoft 365。 会社の Atrae Self-Service (Jamf) に無かったため brew 経由。
+      # cask は Microsoft 公式インストーラなので、 会社アカウントでサインインすれば
+      # ライセンスは通る。
+      "microsoft-office"
     ];
+
+    # ⚠️ pkg 形式の cask (session-manager-plugin / microsoft-office /
+    # amazon-workspaces / logi-options+) は `sudo installer` を呼ぶため
+    # パスワード入力が必要で、 非対話の switch では必ず失敗する。
+    # 失敗すると `brew bundle` が異常終了して **cleanup ごとスキップされる** ので、
+    # 宣言した状態が強制されなくなる。
+    #   → これらは先に手で `brew install --cask <name>` してから switch すること。
+    #     インストール済みなら bundle は "Using <name>" で通過する。
   };
 
   launchd.user.agents.nix-auto-update = {
