@@ -143,6 +143,14 @@ in
         # mise の python は precompiled build を取るので npm 系の
         # min-release-age / ignore-scripts 問題とは無関係。
         python = "3.13";
+        # Go: Atrae/frank の v2 (Frank を Python から書き直す取り組み) 用。
+        # 宣言しない状態で開発機に go が無く、その場しのぎで `brew install go`
+        # した結果「宣言に無い手動インストールに依存する」状態を作りかけたので
+        # (Notifier.app と同じ構図)、node/python と同じくここで宣言する。
+        # 1.26 固定は v2 の CI (.github/workflows/v2-ci.yml の go-version) と
+        # 揃えるため —— 手元と CI で違う版を使うと、片方でだけ通るという
+        # 一番デバッグしづらい状態になる。
+        go = "1.26";
       };
     };
   };
