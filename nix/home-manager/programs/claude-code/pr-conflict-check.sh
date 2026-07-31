@@ -186,8 +186,11 @@ log "Details:
 $(echo -e "$SUMMARY")"
 
 # macOS 通知 (1回だけ)
-NOTIFIER=/Applications/Utilities/Notifier.app/Contents/MacOS/Notifier
-if [ "$DRY_RUN" != "1" ] && [ -x "$NOTIFIER" ]; then
+# 通知手段は notify-desktop (Nix 管理) に集約。 絶対パスを直書きしないこと。
+# 下のプレースホルダは replaceVars が build 時に nix store path へ置換する
+# (default.nix の notifyDesktop を参照)。
+NOTIFIER=@notifyDesktop@
+if [ "$DRY_RUN" != "1" ]; then
   TOTAL=$((N_OK + N_AUTO + N_HUMAN + N_ERR))
   if [ "$N_HUMAN" -gt 0 ] || [ "$N_ERR" -gt 0 ]; then
     SUBTITLE="$N_HUMAN need review / $N_ERR error / $N_AUTO auto / $N_OK clean"
@@ -195,9 +198,9 @@ if [ "$DRY_RUN" != "1" ] && [ -x "$NOTIFIER" ]; then
     SUBTITLE="$TOTAL PR(s) all clean ($N_AUTO auto-fixed)"
   fi
   "$NOTIFIER" \
-    --type banner --title "PR Conflict Check" \
-    --subtitle "$SUBTITLE" \
-    --message "$(echo -e "$SUMMARY" | head -10)" \
+    -title "PR Conflict Check" \
+    -subtitle "$SUBTITLE" \
+    -message "$(echo -e "$SUMMARY" | head -10)" \
     >> "$LOG_FILE" 2>&1 || true
 fi
 

@@ -8,6 +8,20 @@
 let
   username = "takuyamatsumoto";
   pwd = "${config.home.homeDirectory}/dotfiles-nix/home-manager/console/neovim";
+
+  # デスクトップ通知の共通ヘルパー。
+  #
+  # 以前は各スクリプトが /Applications/Utilities/Notifier.app/... を直書きしていた。
+  # これは Nix 管理外の手動インストールアプリで、 どこにも宣言が無かったため、
+  # アプリが消えた瞬間に通知が全滅し Stop hook がエラーを吐き続ける状態になった。
+  # writeShellApplication の runtimeInputs に通知バイナリを宣言することで、
+  # 「Nix が存在を保証する」形に変える。 呼び出し側は絶対パスを持たない。
+  notify-desktop = pkgs.writeShellApplication {
+    name = "notify-desktop";
+    runtimeInputs = [ pkgs.terminal-notifier ];
+    text = builtins.readFile ./programs/claude-code/notify-desktop.sh;
+  };
+  notifyDesktop = "${notify-desktop}/bin/notify-desktop";
 in
 {
   nixpkgs = {
@@ -58,6 +72,10 @@ in
       inputs.gws.packages.${pkgs.system}.default
       inputs.gh-review-watcher.packages.${pkgs.system}.default
       inputs.port-patrol.packages.${pkgs.system}.default
+      # デスクトップ通知の実体。 notify-desktop の runtimeInputs でも参照しているが、
+      # 手動での動作確認 (terminal-notifier -list ALL 等) 用に PATH にも出しておく。
+      terminal-notifier
+      notify-desktop
     ];
 
     sessionVariables = {
@@ -155,7 +173,9 @@ in
 
   # Claude Code hooks
   home.file.".claude/hooks/notify-done.sh" = {
-    source = ./programs/claude-code/notify-done.sh;
+    source = pkgs.replaceVars ./programs/claude-code/notify-done.sh {
+      inherit notifyDesktop;
+    };
     executable = true;
   };
 
@@ -183,7 +203,9 @@ in
 
   # PR conflict daily auto-checker (entrypoint, called by launchd)
   home.file.".local/bin/pr-conflict-check" = {
-    source = ./programs/claude-code/pr-conflict-check.sh;
+    source = pkgs.replaceVars ./programs/claude-code/pr-conflict-check.sh {
+      inherit notifyDesktop;
+    };
     executable = true;
   };
 
@@ -262,6 +284,8 @@ in
 
   # gh-review-watcher の hook 設定
   xdg.configFile."gh-review-watcher/config.toml" = {
-    source = ./programs/claude-code/gh-review-watcher-config.toml;
+    source = pkgs.replaceVars ./programs/claude-code/gh-review-watcher-config.toml {
+      inherit notifyDesktop;
+    };
   };
 }

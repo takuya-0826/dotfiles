@@ -7,14 +7,16 @@ name = "log"
 command = "echo '[NEW PR] {repo} #{number} {title} by @{author}' >> /tmp/gh-review-watcher-hooks.log"
 
 # 新規PR検出時: macOS通知
+# 通知手段は notify-desktop (Nix 管理) に集約。 絶対パスを直書きしないこと。
+# 下のプレースホルダは replaceVars が build 時に nix store path へ置換する
+# (default.nix の notifyDesktop を参照)。
 [[on_new_pr]]
 name = "notify"
-command = """/Applications/Utilities/Notifier.app/Contents/MacOS/Notifier \
-  --type banner \
-  --title 'PR Review Request' \
-  --subtitle '{repo} #{number}' \
-  --message {title} \
-  --sound default"""
+command = """@notifyDesktop@ \
+  -title 'PR Review Request' \
+  -subtitle '{repo} #{number}' \
+  -message {title} \
+  -sound default"""
 
 # 新規PR検出時: yoloラベルがなければ新しいタブでClaude Codeにレビューさせる
 [[on_new_pr]]
