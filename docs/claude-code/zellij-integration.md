@@ -169,16 +169,27 @@ fi
 ```bash
 #!/usr/bin/env bash
 ROLE=${CLAUDE_ROLE:-$(basename "$PWD")}
-/Applications/Utilities/Notifier.app/Contents/MacOS/Notifier \
-  --type banner \
-  --title "$ROLE" \
-  --subtitle "タスク完了" \
-  --message "${ROLE}のタスクが完了しました" \
-  --sound default \
-  --messageaction "/usr/bin/open /Applications/WezTerm.app"
+@notifyDesktop@ \
+  -title "$ROLE" \
+  -subtitle "タスク完了" \
+  -message "${ROLE}のタスクが完了しました" \
+  -sound default \
+  -activate com.github.wez.wezterm || true
+exit 0
 ```
 
-> **Note**: macOS 通知には [Notifier.app](https://github.com/vjeantet/alerter) が必要です。
+`@notifyDesktop@` は `nix/home-manager/default.nix` の `replaceVars` が build 時に
+`notify-desktop` の nix store path へ置換する。
+
+> **Note**: 通知の実体は nixpkgs の `terminal-notifier`。 `notify-desktop`
+> (`writeShellApplication` + `runtimeInputs`) 経由で呼ぶ。
+>
+> 2026-07-31 以前は Nix 管理外の手動インストールアプリ
+> `/Applications/Utilities/Notifier.app` を各スクリプトに直書きしていたが、
+> アプリを消した時点で通知が全滅し、 Stop hook が毎回
+> `No such file or directory` を吐く状態になった。 どの `.nix` にも Brewfile にも
+> 宣言が無かったため設定からは原因が見えなかった。 **通知手段は必ず
+> `notify-desktop` を経由し、 GUI アプリの絶対パスを直書きしないこと。**
 
 ### 3. claude-zellij ラッパースクリプト
 
