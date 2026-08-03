@@ -1,0 +1,69 @@
+// Dev Hub - 1画面 8ペイン均等グリッド (2x4)
+//
+// 起動:  zj-hub                      (推奨。既存セッションがあれば attach)
+//   or   zellij --session dev-hub --new-session-with-layout dev-hub
+//
+// ┌──────────┬──────────┬──────────┬──────────┐
+// │ Home     │ Frank    │ Frank-v2 │ ATS      │  上段 = claude
+// │ (focus)  │ (継続)   │ (継続)   │ (継続)   │
+// ├──────────┼──────────┼──────────┼──────────┤
+// │ Shell-1  │ Shell-2  │ Shell-3  │ Shell-4  │  下段 = 素のシェル
+// │ (~)      │ (frank)  │ (ATS)    │ (~/Atrae)│
+// └──────────┴──────────┴──────────┴──────────┘
+//
+// ★ focus は Home ペイン(cwd=~)。新規ペイン (Alt+n) は focus の cwd を継承する
+//   ので、ここを home にしておくと frank に引きずられない。
+//
+// ★ 上段の 3 つは `--continue` 付き。zellij セッションが消えても Claude Code の
+//   会話は ~/.claude/projects/ に残っているので、このレイアウトを開くだけで
+//   各ディレクトリの直近セッションが復活する。特定のセッションを狙うときだけ
+//   `claude --resume <session-id>` を手で打つ。
+//
+// ★ 下段はサーバ起動・git 操作用。claude に頼まず人間がここで直接動かす
+//   (memory: 「サーバ起動は claude に頼まず、server ペインで直接」)。
+//
+// 2026-08-03: 旧 _archived/dev-hub.kdl を nix 管理下に復活させたもの。変更点は
+//   - ATS-fix の cwd `~/Projects/wevox-ats` が新 Mac に存在しないので削除し、
+//     代わりに frank-v2-slice3 worktree を入れた (作業量が最大のため)
+//   - Frank-2 を廃し、下段を素のシェル 4 枚に統一
+
+layout {
+    // タブバー(＋モード表示)を全タブに載せる。これが無いとタブが画面に出ない。
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
+        }
+        children
+    }
+
+    tab name="dev-hub" {
+        pane split_direction="horizontal" {
+            // ── 上段: claude 4 枚 ──
+            pane split_direction="vertical" size="50%" {
+                pane name="Home" focus=true size="25%" cwd="/Users/takuyamatsumoto" {
+                    command "claude"
+                    args "--dangerously-skip-permissions"
+                }
+                pane name="Frank" size="25%" cwd="/Users/takuyamatsumoto/Atrae/frank" {
+                    command "claude"
+                    args "--dangerously-skip-permissions" "--continue"
+                }
+                pane name="Frank-v2" size="25%" cwd="/Users/takuyamatsumoto/Atrae/frank/.claude/worktrees/frank-v2-slice3" {
+                    command "claude"
+                    args "--dangerously-skip-permissions" "--continue"
+                }
+                pane name="ATS" size="25%" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats" {
+                    command "claude"
+                    args "--dangerously-skip-permissions" "--continue"
+                }
+            }
+            // ── 下段: 素のシェル 4 枚 ──
+            pane split_direction="vertical" size="50%" {
+                pane name="Shell-1" size="25%" cwd="/Users/takuyamatsumoto"
+                pane name="Shell-2" size="25%" cwd="/Users/takuyamatsumoto/Atrae/frank"
+                pane name="Shell-3" size="25%" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats"
+                pane name="Shell-4" size="25%" cwd="/Users/takuyamatsumoto/Atrae"
+            }
+        }
+    }
+}

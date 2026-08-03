@@ -61,9 +61,14 @@
     frank = "_claude_in ~/Atrae/frank";
     gordon = "_claude_in ~/Atrae/frank/apps/gordon";
 
-    # cca / cchub (zellij dev-hub セッション) は意図的に未登録。
-    # dev-hub レイアウトは旧 Mac 側で layouts/_archived/ に引退させられていた。
-    # zellij タブの起動は ~/.local/bin/zj-project (frank|ats|forms|general) を使う。
+    # zellij dev-hub (1画面 8ペイン グリッド)。2026-08-03 に nix 管理下で復活。
+    # 既存セッションがあれば attach、無ければレイアウト付きで新規作成する。
+    # zellij 0.44.3 では `-s NAME -l LAYOUT` が「アタッチ」扱いで、セッションが
+    # 無いと `Session not found` で失敗するため、新規作成は
+    # --new-session-with-layout を使う必要がある (zj-project でも踏んだ罠)。
+    zj-hub = "zellij attach dev-hub 2>/dev/null || zellij --session dev-hub --new-session-with-layout dev-hub";
+
+    # PJ 単位のタブ起動は ~/.local/bin/zj-project (frank|ats|forms|general) を使う。
 
     # Neovim
     v = "nvim";
