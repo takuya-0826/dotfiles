@@ -112,8 +112,22 @@
     fi
 
     # Auto-start Zellij
-    if [[ -z "$ZELLIJ" && -z "$VSCODE_INJECTION" ]]; then
-      eval "$(zellij setup --generate-auto-start zsh)"
+    #
+    # 単一セッション "dev" に attach する (zj-project と同じセッション名)。
+    # `zellij setup --generate-auto-start` の既定は素の `zellij` = 起動のたびに
+    # ランダム名で新規作成。zellij はクライアント/サーバ分離型でデタッチしても
+    # サーバが残り、GC が無いので再起動まで一方的に増え続ける。各サーバは
+    # ペイン名更新のため `ps -ao ppid,args` を定期実行するため、
+    # セッション数 × 全プロセス数で負荷が自乗に効く。
+    #
+    # 発火条件も絞る。既定の判定は $ZELLIJ の有無だけで「人間が打つシェルか」を
+    # 見ないため、GUI アプリやツールが `zsh -l` を起動しただけで発火する。
+    # 2026-08-03、これが原因で 185 セッションまで増殖し Mac が実用不能になった
+    # (load 43 / 全プロセス 1248 / ps だけで CPU 618% / zellij RSS 2.26GB)。
+    # 主犯は Claude Code で、shell snapshot 用の非対話シェル経由で 1 日 30〜60 個
+    # 生んでいた。CLAUDECODE は子プロセスに継承されるので明示的に除外する。
+    if [[ -o interactive && -t 1 && -z "$ZELLIJ" && -z "$VSCODE_INJECTION" && -z "$CLAUDECODE" ]]; then
+      zellij attach -c dev
     fi
 
     # Enable vi mode
