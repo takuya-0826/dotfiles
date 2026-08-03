@@ -14,10 +14,16 @@
 // ★ focus は Home ペイン(cwd=~)。新規ペイン (Alt+n) は focus の cwd を継承する
 //   ので、ここを home にしておくと frank に引きずられない。
 //
-// ★ 上段の 3 つは `--continue` 付き。zellij セッションが消えても Claude Code の
-//   会話は ~/.claude/projects/ に残っているので、このレイアウトを開くだけで
-//   各ディレクトリの直近セッションが復活する。特定のセッションを狙うときだけ
-//   `claude --resume <session-id>` を手で打つ。
+// ★ 上段の 3 つは `claude-resume-latest` (= そのディレクトリの直近セッションを
+//   session-id 明示で --resume する薄いラッパー)。zellij セッションが消えても
+//   Claude Code の会話は ~/.claude/projects/ に残るので、このレイアウトを開く
+//   だけで作業が復活する。`--continue` を使わないのは、11MB / 5067 行の
+//   セッションで "No conversation found to continue" になり復元できなかった
+//   ため (2026-08-03)。詳細は claude-resume-latest.sh の冒頭コメント。
+//
+// ★ コマンドが終了したペインは zellij では入力を受け付けない状態で固まる
+//   (Enter で再実行 / Ctrl+c で閉じる)。復元に失敗したときは下段のシェルから
+//   手で `ccd --resume <id>` を打つのが早い。
 //
 // ★ 下段はサーバ起動・git 操作用。claude に頼まず人間がここで直接動かす
 //   (memory: 「サーバ起動は claude に頼まず、server ペインで直接」)。
@@ -45,16 +51,16 @@ layout {
                     args "--dangerously-skip-permissions"
                 }
                 pane name="Frank" size="25%" cwd="/Users/takuyamatsumoto/Atrae/frank" {
-                    command "claude"
-                    args "--dangerously-skip-permissions" "--continue"
+                    command "claude-resume-latest"
+                    args "/Users/takuyamatsumoto/Atrae/frank"
                 }
                 pane name="Frank-v2" size="25%" cwd="/Users/takuyamatsumoto/Atrae/frank/.claude/worktrees/frank-v2-slice3" {
-                    command "claude"
-                    args "--dangerously-skip-permissions" "--continue"
+                    command "claude-resume-latest"
+                    args "/Users/takuyamatsumoto/Atrae/frank/.claude/worktrees/frank-v2-slice3"
                 }
                 pane name="ATS" size="25%" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats" {
-                    command "claude"
-                    args "--dangerously-skip-permissions" "--continue"
+                    command "claude-resume-latest"
+                    args "/Users/takuyamatsumoto/Atrae/test_wevox-ats"
                 }
             }
             // ── 下段: 素のシェル 4 枚 ──
