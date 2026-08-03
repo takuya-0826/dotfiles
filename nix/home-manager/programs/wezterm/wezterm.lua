@@ -20,6 +20,16 @@ config.font = wezterm.font("HackGen Console NF", {weight="Regular", stretch="Nor
 config.font_size = 14.0
 config.use_ime = true
 
+-- Option キーを Alt として送る (2026-08-03 追加)。
+-- macOS の既定では Option が「合成キー入力」(特殊文字) に食われるため、
+-- zellij の Alt 系バインド (Alt+矢印 = ペイン/タブ移動、Alt+n = 新規ペイン、
+-- Alt+[ ] = レイアウト切替) がターミナルに届かず一切効かなかった。
+-- 両方 false にして左右どちらの Option も Alt 修飾として転送する。
+-- 代償は Option+英字での特殊文字入力 (¥ や © 等) が使えなくなること。
+-- 日本語入力は IME 側の処理なので影響しない (use_ime = true のまま)。
+config.send_composed_key_when_left_alt_is_pressed = false
+config.send_composed_key_when_right_alt_is_pressed = false
+
 -- Color scheme:
 config.color_scheme = 'Everforest Dark (Gogh)'
 

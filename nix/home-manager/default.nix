@@ -203,6 +203,12 @@ in
     executable = true;
   };
 
+  # そのディレクトリの直近セッションを --resume で開く (dev-hub レイアウトが使う)
+  home.file.".local/bin/claude-resume-latest" = {
+    source = ./programs/claude-code/claude-resume-latest.sh;
+    executable = true;
+  };
+
   # Daily report generator script
   home.file.".local/bin/daily-report" = {
     source = ./programs/claude-code/daily-report.sh;
