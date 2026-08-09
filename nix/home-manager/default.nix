@@ -69,6 +69,11 @@ in
       mysql84
       lazysql
       zellij
+      # watch-video skill の依存。 yt-dlp で動画/字幕取得、 ffmpeg (ffprobe 同梱) で
+      # フレーム抽出とメタデータ取得。 ローカル文字起こしの mlx-whisper は nixpkgs に
+      # 無いので `uv tool install mlx-whisper` で別途入れる (YouTube は auto-sub で足りる)。
+      yt-dlp
+      ffmpeg
       inputs.gws.packages.${pkgs.system}.default
       inputs.gh-review-watcher.packages.${pkgs.system}.default
       inputs.port-patrol.packages.${pkgs.system}.default
