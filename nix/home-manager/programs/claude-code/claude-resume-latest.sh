@@ -15,6 +15,11 @@
 # セッションが 1 つも無ければ通常起動にフォールバックする (初回はこれになる)。
 set -uo pipefail
 
+# zellij 経由で遺伝してくる子セッションマーカーを外す (2026-08-04)。
+# これが立っていると transcript 保存が OFF になり、exit 後に --resume 不能な
+# スタブ jsonl だけが残る。このスクリプトは人間用ペインの起動専用なので常に親。
+unset CLAUDE_CODE_CHILD_SESSION
+
 dir="${1:-$PWD}"
 [ $# -gt 0 ] && shift
 
@@ -32,9 +37,20 @@ cd "$dir" || {
 esc="$(printf '%s' "$dir" | tr '/._' '---')"
 proj="$HOME/.claude/projects/$esc"
 
+# 会話本体 (user/assistant エントリ) を含む最新の jsonl を選ぶ。
+# メタデータだけのスタブ (claude.ai 接続セッションのローカル残骸や ai-title のみの
+# 空セッション) は --resume できず "No conversation found with session ID" になる
+# ため除外する (2026-08-04 実測: 13KB のスタブが更新され続けて常に最新になり、
+# resume が永久に失敗 → EXITED ペインで入力不能になった)。
 latest=""
 if [ -d "$proj" ]; then
-  latest="$(ls -t "$proj"/*.jsonl 2>/dev/null | head -1)"
+  for f in $(ls -t "$proj"/*.jsonl 2>/dev/null); do
+    if grep -q '"type":"assistant"' "$f" 2>/dev/null || grep -q '"type":"user"' "$f" 2>/dev/null; then
+      latest="$f"
+      break
+    fi
+    echo "[claude-resume-latest] skip $(basename "$f" .jsonl) (no conversation entries)" >&2
+  done
 fi
 
 if [ -n "$latest" ]; then
