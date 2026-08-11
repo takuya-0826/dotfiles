@@ -284,6 +284,27 @@ in
     recursive = true;
   };
 
+  # zj-plan — Product 企画オーケストレーション組織タブ (①Fable 指揮 / ②Fable 企画 /
+  # ③Sol レビュー watcher) を開くランチャー。静的な KDL は引数を取れないので、
+  # 対象ディレクトリごとにレイアウトを生成して new-session-with-layout する。
+  #
+  # nix 管理下に置く理由: 元は ~/.local/bin に手で置いていたが、同種の zj-role /
+  # zj-work は scratchpad (/private/tmp) に置いたまま昇格させず、2026-08-11 の
+  # 再起動で消滅した (zj-work は dangling symlink だけが残った)。ランチャーは
+  # 「再起動しても必ずそこにある」ことが値打ちなので、手置きしない。
+  home.file.".local/bin/zj-plan" = {
+    source = ./programs/zellij/zj-plan.sh;
+    executable = true;
+  };
+
+  # zj-plan の ③ ペインに常駐する Sol (codex) レビュー watcher。
+  # .zj-plan/review-queue/*.md をポーリングして codex exec でレビューし、
+  # 結果を .zj-plan/reviews/ に出す。ファイルを介するので write-chars 不要。
+  home.file.".local/bin/sol-review-watch" = {
+    source = ./programs/zellij/sol-review-watch.sh;
+    executable = true;
+  };
+
   # Zellij 本体設定 (旧 Mac から移植)。 zellij は初回起動時に config.kdl を自動生成
   # するが、 それは既定値のダンプなので上書きしてよい。 差分は theme
   # (catppuccin-mocha / ghostty と統一) / pane_frames false / default_layout compact
