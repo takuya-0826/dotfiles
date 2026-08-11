@@ -5,11 +5,14 @@
 //
 // ┌──────────┬──────────┬──────────┬──────────┐
 // │ Home     │ Frank    │ Frank-v2 │ ATS      │  上段 = claude
-// │ (focus)  │ (継続)   │ (継続)   │ (継続)   │
+// │ (focus)  │ (継続)   │ (継続)   │ (継続)   │  ★ Enter で起動 (suspended)
 // ├──────────┼──────────┼──────────┼──────────┤
 // │ Shell-1  │ Shell-2  │ Shell-3  │ Shell-4  │  下段 = 素のシェル
 // │ (~)      │ (frank)  │ (ATS)    │ (~/Atrae)│
 // └──────────┴──────────┴──────────┴──────────┘
+//
+// 使い方: 開いた直後、上段はどれも起動していない。使いたいペインに移って
+//         Enter を押した分だけ claude が立ち上がる (8 枚全部を毎回起動しない)。
 //
 // ★ focus は Home ペイン(cwd=~)。新規ペイン (Alt+n) は focus の cwd を継承する
 //   ので、ここを home にしておくと frank に引きずられない。
@@ -21,12 +24,31 @@
 //   セッションで "No conversation found to continue" になり復元できなかった
 //   ため (2026-08-03)。詳細は claude-resume-latest.sh の冒頭コメント。
 //
-// ★ コマンドが終了したペインは zellij では入力を受け付けない状態で固まる
-//   (Enter で再実行 / Ctrl+c で閉じる)。復元に失敗したときは下段のシェルから
-//   手で `ccd --resume <id>` を打つのが早い。
+// ★ 上段 4 枚は `start_suspended true` で、開いた時点では起動せず Enter 待ちに
+//   なる (2026-08-11)。即時実行をやめた理由は 2 つ:
+//
+//   1. 終了したペインが固まる問題が消える。zellij は `command` 付きペインの
+//      コマンドが終了すると入力を受け付けない状態で止まる。即時実行だと
+//      claude の起動に失敗した / 終了した時点でそのペインは死に、下段の
+//      シェルから打ち直すしかなかった。suspended なら Enter で何度でも再試行
+//      できる (= 失敗しても同じペインの中で回復できる)。
+//   2. 再開したい時刻の直近セッションを掴める。`claude-resume-latest` は
+//      「実行した瞬間の最新 jsonl」を選ぶので、レイアウトを開いた瞬間ではなく
+//      拓也が Enter を押した瞬間に解決されるほうが正しい。
+//
+// ★ zellij の永続化 (session_serialization) に作業の復元を期待しないこと。
+//   zellij はペインの実行中コマンドを `ps -ao ppid,args` で「最も深い子
+//   プロセス」から推定して記録するので、claude を動かしているペインは必ず
+//   MCP サーバ (npm / node) として保存される。2026-08-11 に実際に確認した
+//   dev-hub の復元ダンプは、上段の Home が消えて npm / node に化け、下段の
+//   素シェル 4 枚が全部 `command="claude"` になっていた。
+//   ダンプは構造的に嘘をつくので、復元源は常に ~/.claude/projects/ の
+//   jsonl (= claude-resume-latest) 側だけ。zj-hub が EXITED を attach せず
+//   作り直すのはこのため。
 //
 // ★ 下段はサーバ起動・git 操作用。claude に頼まず人間がここで直接動かす
 //   (memory: 「サーバ起動は claude に頼まず、server ペインで直接」)。
+//   下段は `command` を持たない素のシェルなので suspended の対象外。
 //
 // 2026-08-03: 旧 _archived/dev-hub.kdl を nix 管理下に復活させたもの。変更点は
 //   - ATS-fix の cwd `~/Projects/wevox-ats` が新 Mac に存在しないので削除し、
@@ -44,23 +66,27 @@ layout {
 
     tab name="dev-hub" {
         pane split_direction="horizontal" {
-            // ── 上段: claude 4 枚 ──
+            // ── 上段: claude 4 枚 (全部 Enter 待ち) ──
             pane split_direction="vertical" size="50%" {
                 pane name="Home" focus=true size="25%" cwd="/Users/takuyamatsumoto" {
                     command "claude"
                     args "--dangerously-skip-permissions"
+                    start_suspended true
                 }
                 pane name="Frank" size="25%" cwd="/Users/takuyamatsumoto/Atrae/frank" {
                     command "claude-resume-latest"
                     args "/Users/takuyamatsumoto/Atrae/frank"
+                    start_suspended true
                 }
                 pane name="Frank-v2" size="25%" cwd="/Users/takuyamatsumoto/Atrae/frank/.claude/worktrees/frank-v2-slice3" {
                     command "claude-resume-latest"
                     args "/Users/takuyamatsumoto/Atrae/frank/.claude/worktrees/frank-v2-slice3"
+                    start_suspended true
                 }
                 pane name="ATS" size="25%" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats" {
                     command "claude-resume-latest"
                     args "/Users/takuyamatsumoto/Atrae/test_wevox-ats"
+                    start_suspended true
                 }
             }
             // ── 下段: 素のシェル 4 枚 ──
