@@ -1,0 +1,91 @@
+// All - 全PJタブを一発で起動 (General / Frank / ATS / Forms)
+//   冷えた端末から: zj-project all
+//   (直接叩くなら zellij --session dev --new-session-with-layout all)
+//
+// ⚠️ 全PJの dev server が一斉に立つ。負荷に注意。
+//   lead (claude) は 4 枚とも start_suspended なので、使うタブで Enter を
+//   押した分だけ起動する。開いただけで claude が 4 つ立つことはない。
+//
+// ★ 各タブの中身は general / frank / ats / forms.kdl と同一に保つこと。
+//   zellij のレイアウトに include は無いので手で二重管理している。
+//   設計メモ (lead が suspended な理由 / タブ = PJ の理由) は frank.kdl が正典。
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
+        }
+        children
+    }
+
+    // --- General ---
+    tab name="General" focus=true {
+        pane split_direction="vertical" {
+            pane name="lead" focus=true size="65%" cwd="/Users/takuyamatsumoto" {
+                command "claude-resume-latest"
+                args "--tab" "General" "/Users/takuyamatsumoto"
+                start_suspended true
+            }
+            pane name="shell" size="35%" cwd="/Users/takuyamatsumoto"
+        }
+    }
+
+    // --- Frank (Python backend, UIはapps/frank-web新設予定) ---
+    tab name="Frank" {
+        pane split_direction="vertical" {
+            pane name="lead" focus=true size="55%" cwd="/Users/takuyamatsumoto/Atrae/frank" {
+                command "claude-resume-latest"
+                args "--tab" "Frank" "/Users/takuyamatsumoto/Atrae/frank"
+                start_suspended true
+            }
+            pane split_direction="horizontal" size="45%" {
+                pane name="frank.main :8080" cwd="/Users/takuyamatsumoto/Atrae/frank" {
+                    command "bash"
+                    args "-c" "source .venv/bin/activate && exec python -m frank.main"
+                }
+                pane name="front (apps/frank-web 予定)" cwd="/Users/takuyamatsumoto/Atrae/frank"
+            }
+        }
+    }
+
+    // --- ATS (Next.js 15 + Bun) ---
+    tab name="ATS" {
+        pane split_direction="vertical" {
+            pane name="lead" focus=true size="55%" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats" {
+                command "claude-resume-latest"
+                args "--tab" "ATS" "/Users/takuyamatsumoto/Atrae/test_wevox-ats"
+                start_suspended true
+            }
+            pane split_direction="horizontal" size="45%" {
+                pane name="db :5432" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats" {
+                    command "bash"
+                    args "-c" "docker compose up db 2>/dev/null || docker-compose up db"
+                }
+                pane name="dev :3000" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats" {
+                    command "bun"
+                    args "run" "dev"
+                }
+            }
+        }
+    }
+
+    // --- Forms (共有wevox・3リポ横断。codex/ship禁止) ---
+    tab name="Forms" {
+        pane split_direction="vertical" {
+            pane name="lead" focus=true size="55%" cwd="/Users/takuyamatsumoto/Atrae/wevox-mono-web/web-progressive" {
+                command "claude-resume-latest"
+                args "--tab" "Forms" "/Users/takuyamatsumoto/Atrae/wevox-mono-web/web-progressive"
+                start_suspended true
+            }
+            pane split_direction="horizontal" size="45%" {
+                pane name="BFF :3333" cwd="/Users/takuyamatsumoto/Atrae/wevox-rest-bff/apps/wevox-bff" {
+                    command "pnpm"
+                    args "dev"
+                }
+                pane name="forms :3017" cwd="/Users/takuyamatsumoto/Atrae/wevox-mono-web/web-progressive" {
+                    command "pnpm"
+                    args "dev" "--filter" "forms"
+                }
+            }
+        }
+    }
+}

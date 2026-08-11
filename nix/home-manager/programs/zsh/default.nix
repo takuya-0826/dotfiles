@@ -61,8 +61,9 @@
     frank = "_claude_in ~/Atrae/frank";
     gordon = "_claude_in ~/Atrae/frank/apps/gordon";
 
-    # zellij dev-hub は関数 zj-hub (initExtra 側) で起動する。
-    # PJ 単位のタブ起動は ~/.local/bin/zj-project (frank|ats|forms|general) を使う。
+    # zellij のタブ起動は zj-project (general|frank|ats|forms|all) に一本化した。
+    # 1 画面 8 ペインの dev-hub / zj-hub は 2026-08-11 に退役 (経緯は
+    # programs/zellij/layouts/frank.kdl 冒頭)。
 
     # Neovim
     v = "nvim";
@@ -233,66 +234,25 @@
       command claude "$@"
     }
 
-    # zellij dev-hub (1画面 8ペイン グリッド) の起動。
+    # zj-hub / dev-hub (1画面 8ペイン グリッド) は 2026-08-11 に退役した。
     #
-    # ★ 生きているセッションにだけ attach する。EXITED には attach しない。
-    #   zellij の `attach` は EXITED セッションを「復元ダンプ」から起動するが、
-    #   そのダンプに記録されるコマンドは claude ではなく **claude の子プロセスの
-    #   MCP サーバ** になる (zellij は `ps -ao ppid,args` でペインの実行中コマンドを
-    #   推定するため、最も深い子を掴む)。結果、復元した dev-hub の上段 4 ペインは
-    #   `node .../mcp-server-atrae-ui` や `node .../playwright-mcp` を単体起動して
-    #   即終了し、「Atrae UI MCP Server started」「npm warn ...」だけが残る。
-    #   claude は 1 つも起動しない = 会話が復元されない (2026-08-03 実測)。
+    # 1 画面を 8 分割して 4 PJ を並べる形は 2026-07-13 に「PJ = タブのオンデマンド
+    # 編成」へ再設計した時点で一度捨てており、2026-08-03 に旧 Mac の dev-hub を
+    # nix 管理下で復活させたのは出戻りだった。PJ をペインに焼き込むと PJ の増減・
+    # 移動のたびにレイアウト改修が要る (wevox-ats のパス消失で 2 回踏んだ)。
+    # 現在は zj-project (タブ = PJ) に一本化している。
     #
-    #   復元ダンプは不要。会話本体は ~/.claude/projects/ に残っており、
-    #   レイアウトから新規作成すれば上段の claude-resume-latest が --resume で
-    #   拾い直す。よって EXITED は delete してから作り直すのが正しい。
+    # ここにあった知見は移設済み:
+    #   - EXITED に attach しない理由 → programs/zellij/zj-project.sh
+    #   - 復元ダンプが MCP サーバを掴む件 → programs/zellij/layouts/frank.kdl
+    #   - レイアウト本体 → programs/zellij/_archived/dev-hub.kdl
     #
-    # ★ zellij 0.44.3 では `-s NAME -l LAYOUT` が「アタッチ」扱いで、セッションが
-    #   無いと `Session not found` で失敗するため、新規作成は
-    #   --new-session-with-layout を使う必要がある (zj-project でも踏んだ罠)。
-    # ★ zellij の中から呼ばれたら attach しない。auto-start があるので新しい
-    #   WezTerm タブは既に (ランダム名の) セッション内で、そこで `zellij attach`
-    #   すると **入れ子**になる。キー入力は外側のセッションが先に食うので
-    #   フルスクリーン (Alt+f) やペイン移動が効かなくなる (2026-08-03 実測。
-    #   ステータスバーが 2 本出ているのが入れ子のサイン)。
-    #   代わりに `zellij action switch-session` で今のクライアントを載せ替える。
-    #   セッションが無い場合は内側では作れないので、tty を持たない子プロセスと
-    #   して detached で作ってから switch する (作成時 80x24 → switch でリサイズ)。
-    function zj-hub() {
-      local line
-      line="$(zellij list-sessions -n 2>/dev/null | grep -E '^dev-hub ')"
-
-      # EXITED の復元ダンプは使わない (上記の理由)。捨てて作り直す。
-      if [[ -n "$line" && "$line" == *EXITED* ]]; then
-        echo "[zj-hub] EXITED の dev-hub を破棄して作り直します (復元ダンプは MCP サーバを掴むため使わない)" >&2
-        zellij delete-session dev-hub >/dev/null 2>&1
-        line=""
-      fi
-
-      if [[ -z "$line" ]]; then
-        if [[ -n "$ZELLIJ" ]]; then
-          # 入れ子回避のため detached で作る。
-          # macOS に setsid は無いので nohup + サブシェルで切り離す。
-          # 標準入出力を潰すと tty を持たない = zellij は detached で立ち上がる。
-          ( nohup zellij --session dev-hub --new-session-with-layout dev-hub >/dev/null 2>&1 </dev/null & )
-          local i
-          for i in {1..60}; do
-            zellij list-sessions -s 2>/dev/null | grep -qx dev-hub && break
-            sleep 0.25
-          done
-        else
-          zellij --session dev-hub --new-session-with-layout dev-hub
-          return
-        fi
-      fi
-
-      if [[ -n "$ZELLIJ" ]]; then
-        zellij action switch-session dev-hub
-      else
-        zellij attach dev-hub
-      fi
-    }
+    # ★ 唯一ここにしか無かった知見なので書き残す: zellij の中から
+    #   `zellij attach` を呼ぶと **入れ子**になる。キー入力は外側のセッションが
+    #   先に食うのでフルスクリーン (Alt+f) やペイン移動が効かなくなる
+    #   (ステータスバーが 2 本出ているのが入れ子のサイン)。内側から別セッションへ
+    #   移るときは `zellij action switch-session` でクライアントを載せ替える。
+    #   zj-project は zellij 内では attach せずタブを足すだけなので該当しない。
 
     # コンテキスト固定ランチャー。 どこから打っても claude の着地先が一定になる。
     # サブシェル ( ) で cd するので、 終了後は元の cwd に戻る。

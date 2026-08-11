@@ -1,0 +1,38 @@
+// ATS - 採用管理システム (Next.js 15 + Bun, 単一アプリ)
+//   起動: zj-project ats
+//   Drizzle Studio が要る時は Alt+n で: bun run db:studio
+//
+// 設計メモ (lead が suspended な理由 / タブ = PJ の理由) は frank.kdl 冒頭が正典。
+//
+// ★ cwd を ~/Projects/wevox-ats から ~/Atrae/test_wevox-ats に修正した
+//   (2026-08-11)。旧パスは新 Mac に存在せず、このレイアウトは移行以来
+//   起動できない状態だった。dev-hub も同じ理由で ATS ペインを差し替えている。
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
+        }
+        children
+    }
+    tab name="ATS" {
+        pane split_direction="vertical" {
+            pane name="lead" focus=true size="55%" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats" {
+                command "claude-resume-latest"
+                args "--tab" "ATS" "/Users/takuyamatsumoto/Atrae/test_wevox-ats"
+                start_suspended true
+            }
+            pane split_direction="horizontal" size="45%" {
+                // Postgres (docker compose v2/v1 両対応)
+                pane name="db :5432" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats" {
+                    command "bash"
+                    args "-c" "docker compose up db 2>/dev/null || docker-compose up db"
+                }
+                // Next.js dev (フロント + /api BFF)
+                pane name="dev :3000" cwd="/Users/takuyamatsumoto/Atrae/test_wevox-ats" {
+                    command "bun"
+                    args "run" "dev"
+                }
+            }
+        }
+    }
+}

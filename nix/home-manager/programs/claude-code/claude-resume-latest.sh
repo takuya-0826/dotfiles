@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # そのディレクトリの直近セッションを session-id 明示で resume する。
 #
-# 使い方: claude-resume-latest [dir] [-- <claude への追加引数>]
+# 使い方: claude-resume-latest [--tab <tab-name>] [dir] [<claude への追加引数>]
 #   dir を省略すると $PWD。zellij レイアウトの command として使う想定。
+#   --tab を渡すと claude-zellij と同じタブ名登録を行い、hook による
+#   🤖 / ✅ のタブ名切り替えが効くようになる (2026-08-11 追加)。
 #
 # なぜ `claude --continue` を使わないか (2026-08-03):
 #   --continue は "current directory の最新会話" を継続するが、11MB / 5067 行の
@@ -19,6 +21,14 @@ set -uo pipefail
 # これが立っていると transcript 保存が OFF になり、exit 後に --resume 不能な
 # スタブ jsonl だけが残る。このスクリプトは人間用ペインの起動専用なので常に親。
 unset CLAUDE_CODE_CHILD_SESSION
+
+# --tab <name>: zellij のタブ名を hook 用に登録してから起動する。
+# 登録は claude 起動前に済ませる必要があるので、cd より先に処理する
+# (query-tab-names を引くだけなので cwd には依存しない)。
+if [ "${1:-}" = "--tab" ]; then
+  zellij-tab-register "${2:-}"
+  shift 2
+fi
 
 dir="${1:-$PWD}"
 [ $# -gt 0 ] && shift

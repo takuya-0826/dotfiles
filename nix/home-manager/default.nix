@@ -208,7 +208,7 @@ in
     executable = true;
   };
 
-  # そのディレクトリの直近セッションを --resume で開く (dev-hub レイアウトが使う)
+  # そのディレクトリの直近セッションを --resume で開く (zj-project の lead ペインが使う)
   home.file.".local/bin/claude-resume-latest" = {
     source = ./programs/claude-code/claude-resume-latest.sh;
     executable = true;
@@ -282,6 +282,23 @@ in
   xdg.configFile."zellij/layouts" = {
     source = ./programs/zellij/layouts;
     recursive = true;
+  };
+
+  # zj-project — PJ ごとの zellij タブをオンデマンドで開く。
+  # 「タブ = プロジェクト、ペイン = そのPJ内の役割」が zellij 環境の正典の形で、
+  # 1 画面 8 分割に 4 PJ を並べる dev-hub は 2026-08-11 に退役した
+  # (経緯と設計メモは programs/zellij/layouts/frank.kdl 冒頭)。
+  home.file.".local/bin/zj-project" = {
+    source = ./programs/zellij/zj-project.sh;
+    executable = true;
+  };
+
+  # 「このペインはどのタブか」を /tmp に登録する。Claude Code の hook が読んで
+  # タブ名を 🤖 / ✅ に切り替える。claude-zellij と claude-resume-latest --tab の
+  # 両方から使う共有ヘルパー。
+  home.file.".local/bin/zellij-tab-register" = {
+    source = ./programs/zellij/zellij-tab-register.sh;
+    executable = true;
   };
 
   # zj-plan — Product 企画オーケストレーション組織タブ (①Fable 指揮 / ②Fable 企画 /
