@@ -150,10 +150,21 @@ ZJ() { env -u CLAUDE_CODE_CHILD_SESSION -u CLAUDECODE zellij "$@"; }
 
 if [ -n "${ZELLIJ:-}" ]; then
   # zellij 内: 同名タブがあれば移動、無ければタブ追加
+  #
+  # ★ --cwd が必須 (2026-08-13 に実測でバグを特定)。
+  #   `zellij action new-tab --layout <file>` は **レイアウト内の `cwd` 宣言を
+  #   無視して親セッションの cwd を継承する**。--new-session-with-layout の
+  #   経路では正しく効くので、同じ KDL でも起動経路によって挙動が変わる。
+  #
+  #   実害: 2026-08-10 20:51 の企画セッションはホームの zellij から起動したため
+  #   3 ペイン全部が cwd=$HOME で立ち上がり、claude の transcript が
+  #   ~/.claude/projects/-Users-takuyamatsumoto/ に入った (保存先はセッション
+  #   開始時の cwd で決まる)。結果「LightSuccess の会話が復元できない」状態に
+  #   なり、50 分動いたのに LightSuccess 配下への書き込みも 0 だった。
   if zellij action query-tab-names | grep -qxF "$TAB"; then
     zellij action go-to-tab-name "$TAB"
   else
-    ZJ action new-tab --layout "$LAYOUT" --name "$TAB"
+    ZJ action new-tab --layout "$LAYOUT" --cwd "$DIR" --name "$TAB"
   fi
 else
   # zellij 外: セッションが生きていれば attach、無ければ新規作成
