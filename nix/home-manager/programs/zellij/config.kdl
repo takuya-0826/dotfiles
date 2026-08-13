@@ -514,9 +514,20 @@ pane_frames false
 // Compact layout (tab-barだけ、status-barなし)
 default_layout "compact"
 
-// セッション永続化: 再起動後に zj-project の各PJタブ(cwd/コマンド)を復活させる
-// 既定ONだが依存を明示。復活後は各serverペインで Enter で再起動。
-session_serialization true
+// セッション永続化は使わない (2026-08-13、zellij 既定の false に戻した)。
+//
+// 復元ダンプは構造的に嘘をつく。zellij はペインの実行中コマンドを
+// `ps -ao ppid,args` で推定して最も深い子を掴むため、claude ペインは必ず
+// 「claude の子プロセスの MCP サーバ」として保存される。復元すると MCP サーバが
+// stdio 単体で起動して即終了し、claude は立ち上がらない (2026-08-03 に dev-hub の
+// 実ダンプで確認: 上段が npm / node に化け、素シェル 4 枚が command="claude" に
+// なっていた)。EXITED セッションへの attach を避ける回避コードも各ランチャーに
+// 抱えることになっていた。
+//
+// 会話の復元源は常に ~/.claude/projects/*.jsonl であり、zellij セッションは器に
+// すぎない。まるちゃんは zellij の config.kdl 自体を持たない = 最初から
+// session_serialization なしで「セッションは使い捨て・継続性は claude の -c」で
+// 運用している。こちらもそれに揃える (→ layouts/work.kdl 冒頭)。
  
 // Whether to show release notes on first version run
 // Default: true

@@ -208,7 +208,8 @@ in
     executable = true;
   };
 
-  # そのディレクトリの直近セッションを --resume で開く (zj-project の lead ペインが使う)
+  # そのディレクトリの直近セッションを --resume で開く。cwd を跨いで特定セッションを
+  # 開き直したいとき用 (work.kdl の claude ペインは素の -c を使っている)
   home.file.".local/bin/claude-resume-latest" = {
     source = ./programs/claude-code/claude-resume-latest.sh;
     executable = true;
@@ -284,14 +285,10 @@ in
     recursive = true;
   };
 
-  # zj-project — PJ ごとの zellij タブをオンデマンドで開く。
-  # 「タブ = プロジェクト、ペイン = そのPJ内の役割」が zellij 環境の正典の形で、
-  # 1 画面 8 分割に 4 PJ を並べる dev-hub は 2026-08-11 に退役した
-  # (経緯と設計メモは programs/zellij/layouts/frank.kdl 冒頭)。
-  home.file.".local/bin/zj-project" = {
-    source = ./programs/zellij/zj-project.sh;
-    executable = true;
-  };
+  # zj-project は 2026-08-13 に退役した。端末を開くと zsh の auto-start が
+  # `zellij --layout work` を叩き、8 タブ (= PJ) が常に立ち上がるようになったので、
+  # 「PJ タブをオンデマンドで開くランチャー」が要らなくなった。
+  # 経緯と設計メモは programs/zellij/layouts/work.kdl 冒頭。
 
   # 「このペインはどのタブか」を /tmp に登録する。Claude Code の hook が読んで
   # タブ名を 🤖 / ✅ に切り替える。claude-zellij と claude-resume-latest --tab の
@@ -325,8 +322,9 @@ in
   # Zellij 本体設定 (旧 Mac から移植)。 zellij は初回起動時に config.kdl を自動生成
   # するが、 それは既定値のダンプなので上書きしてよい。 差分は theme
   # (catppuccin-mocha / ghostty と統一) / pane_frames false / default_layout compact
-  # / session_serialization true / show_startup_tips false の 5 点。
-  # session_serialization は zj-project のタブ (cwd・コマンド) を再起動後に復活させる。
+  # / show_startup_tips false の 4 点。
+  # session_serialization true は 2026-08-13 に外した (復元ダンプは claude ではなく
+  # MCP サーバを掴むので信用できない。理由は config.kdl の当該箇所)。
   xdg.configFile."zellij/config.kdl".source = ./programs/zellij/config.kdl;
 
   # Ghostty (常用ターミナル、 旧 Mac から移植)。 JetBrainsMono Nerd Font +

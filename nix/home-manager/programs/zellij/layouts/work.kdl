@@ -1,423 +1,178 @@
+// work.kdl — メインの開発レイアウト (タブ = プロジェクト)
+//   起動: zellij --layout work
+//
+// ┌─ Home ─ Frank ─ tiki-taka ─ Forms ─ uSketch ─ ATS ─ brain ─ dotfiles ─┐
+// │                                                                       │
+// │  ┌─────────────────────────────────────────────────┐                  │
+// │  │ claude-zellij "<TabName>" ... -c                │ ← expanded       │
+// │  ├─────────────────────────────────────────────────┤                  │
+// │  │ dev server (あれば)                             │ ← stacked        │
+// │  └─────────────────────────────────────────────────┘                  │
+// └───────────────────────────────────────────────────────────────────────┘
+//
+// ============================================================================
+// 設計メモ (2026-08-13)
+// ============================================================================
+//
+// ■ 上流 EdV4H/dotfiles の work.kdl を、拓也の PJ に差し替えたもの
+//
+//   まるちゃんは 2 枚を使い分けている (本人の docs/terminal/zellij-layouts.md):
+//     - work.kdl    = 「メインの開発レイアウト」。タブ = PJ、そこに座って打つ
+//     - cockpit.kdl = 「4x2 グリッドの指揮レイアウト」。ペイン = PJ、
+//                      claude は --remote-control 付きで、外から指示を流して
+//                      動いている様子を眺める盤面
+//
+//   ⚠️ 2026-08-11 に「まるちゃんも 1 画面に複数 PJ を並べたペインは 1 つも無い」
+//   と判断して dev-hub を退役させたが、これは work.kdl しか見ていなかった誤り。
+//   cockpit.kdl はまさにペイン = PJ をやっている。ただし用途が「作業」ではなく
+//   「指揮・俯瞰」なので、8 分割と タブ = PJ は対立しない。cockpit 相当は
+//   別途 cockpit.kdl として起こす (2026-08-13 時点では未着手)。
+//
+// ■ cwd は固定 (まるちゃん通り)
+//
+//   彼の work.kdl は 2026-03-17 以降 5 ヶ月間 1 度も編集されていない = PJ 集合が
+//   動かないので固定コストがゼロ。拓也の PJ はもっと動くが、生成方式や
+//   オンデマンド方式より「ファイル 1 枚を見れば全部分かる」を優先した (拓也判断)。
+//   PJ の増減時は この KDL を直して `nix run .#update`。
+//
+// ■ タブは 8 個に絞る
+//
+//   claude の実績 (~/.claude/projects/ の cwd 別ディレクトリ) で選んだ。
+//   落としたもの: Frank-v2 (worktree = 消える前提。並行実装の分離は
+//   `Agent(isolation: worktree)` で都度作る) / ~/Atrae (frank・ATS・Forms・
+//   uSketch の親。専用の席を常に確保する性質ではない)。
+//
+// ■ 全ペイン start_suspended true (まるちゃん通り)
+//
+//   8 タブが同時起動するとリソースが持たない。加えて zellij は `command` 付き
+//   ペインのコマンドが終了すると入力を受け付けない状態で固まるため、即時実行だと
+//   起動に失敗した時点でそのペインが死ぬ。suspended なら Enter で何度でも再試行
+//   できる。dev server も suspended にしてある (旧 zj-project 系は自動起動だった)。
+//
+// ■ 会話の継続は claude の -c だけが担う
+//
+//   まるちゃんは zellij の config.kdl 自体を持たない = session_serialization は
+//   デフォルトの false。「セッションは使い捨て、レイアウトは毎回作り直す、
+//   継続性は -c」という設計。これは 2026-08-11 に我々が辿り着いた結論
+//   (「zellij の永続化に作業復元を期待する設計自体が誤り。復元源は常に
+//   ~/.claude/projects/*.jsonl だけ」) と同じ。彼は最初からそう作っていた。
+//   ※ 我々の config.kdl の session_serialization true を切るのは別作業 (保留中)。
+//
+// ■ claude は claude-zellij ラッパー経由
+//
+//   これが無いと 🤖 / ✅ のタブ名切り替えフックが動かない (フックは
+//   /tmp/zellij-tab-name-<paneid> を読むが、書くのはこのラッパーだけ。
+//   旧レイアウトは `command "claude"` 直呼びで、導入以来ずっと無効だった)。
+//
+// ■ 未着手 (この 8 タブとは独立して足せる)
+//
+//   cockpit.kdl (8 分割の指揮盤面) / zj-plan の 5 役割化 / zj-project 系 5
+//   レイアウトの退役 / session_serialization の削除 / auto-start をこの
+//   レイアウトに向ける (これをやるまで「端末を開くと素の 1 ペイン」は直らない)。
+// ============================================================================
+
 layout {
     cwd "/Users/takuyamatsumoto"
-    tab name="Alchemy" hide_floating_panes=true {
+
+    default_tab_template {
         pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
+            plugin location="zellij:compact-bar"
         }
+        children
+    }
+
+    tab name="Home" focus=true hide_floating_panes=true {
+        pane command="claude-zellij" {
+            args "Home" "--dangerously-skip-permissions" "-c"
+            start_suspended true
+        }
+    }
+
+    tab name="Frank" hide_floating_panes=true {
         pane stacked=true {
-            pane command="claude-zellij" cwd="Projects/alchemy" expanded=true {
-                args "Alchemy" "--dangerously-skip-permissions" "-c"
+            pane command="claude-zellij" cwd="Atrae/frank" expanded=true {
+                args "Frank" "--dangerously-skip-permissions" "-c"
                 start_suspended true
             }
-            pane command="nr" cwd="Projects/alchemy" {
+            pane name="frank.main :8080" command="bash" cwd="Atrae/frank" {
+                args "-c" "source .venv/bin/activate && exec python -m frank.main"
+                start_suspended true
+            }
+        }
+    }
+
+    tab name="tiki-taka" hide_floating_panes=true {
+        pane command="claude-zellij" cwd="LightSuccess" {
+            args "tiki-taka" "--dangerously-skip-permissions" "-c"
+            start_suspended true
+        }
+    }
+
+    tab name="Forms" hide_floating_panes=true {
+        pane stacked=true {
+            pane command="claude-zellij" cwd="Atrae/wevox-mono-web/web-progressive" expanded=true {
+                args "Forms" "--dangerously-skip-permissions" "-c"
+                start_suspended true
+            }
+            pane name="BFF :3333" command="pnpm" cwd="Atrae/wevox-rest-bff/apps/wevox-bff" {
+                args "dev"
+                start_suspended true
+            }
+            pane name="forms :3017" command="pnpm" cwd="Atrae/wevox-mono-web/web-progressive" {
+                args "dev" "--filter" "forms"
+                start_suspended true
+            }
+        }
+    }
+
+    tab name="uSketch" hide_floating_panes=true {
+        pane stacked=true {
+            pane command="claude-zellij" cwd="Atrae/usketch" expanded=true {
+                args "uSketch" "--dangerously-skip-permissions" "-c"
+                start_suspended true
+            }
+            pane name="dev (turbo)" command="pnpm" cwd="Atrae/usketch" {
                 args "dev"
                 start_suspended true
             }
         }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
     }
-    tab name="English" hide_floating_panes=true {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
-        pane command="claude-zellij" cwd="Projects/learn-english-app" {
-            args "English" "--dangerously-skip-permissions" "-c"
-            start_suspended true
-        }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
-    }
-    tab name="Widget" hide_floating_panes=true {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
-        pane command="claude-zellij" cwd="Projects/wevox/wevox-mono-web/web-progressive" {
-            args "Widget" "--dangerously-skip-permissions"
-            start_suspended true
-        }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
-    }
-    tab name="Sort" hide_floating_panes=true {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
-        pane command="claude-zellij" cwd="Projects/wevox" {
-            args "Sort" "--dangerously-skip-permissions"
-            start_suspended true
-        }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
-    }
-    tab name="Menu" hide_floating_panes=true {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
-        pane command="nvim" cwd="Projects/wevox/wevox-mono-web/web-progressive" {
-            start_suspended true
-        }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
-    }
-    tab name="Croupier" hide_floating_panes=true {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
+
+    tab name="ATS" hide_floating_panes=true {
         pane stacked=true {
-            pane command="claude-zellij" cwd="Projects/croupier" expanded=true {
-                args "Croupier" "--dangerously-skip-permissions"
+            pane command="claude-zellij" cwd="Atrae/test_wevox-ats" expanded=true {
+                args "ATS" "--dangerously-skip-permissions" "-c"
                 start_suspended true
             }
-            pane command="nr" cwd="Projects/croupier" {
-                args "dev"
+            pane name="db :5432" command="bash" cwd="Atrae/test_wevox-ats" {
+                args "-c" "docker compose up db 2>/dev/null || docker-compose up db"
                 start_suspended true
             }
-        }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
+            pane name="dev :3000" command="bun" cwd="Atrae/test_wevox-ats" {
+                args "run" "dev"
+                start_suspended true
+            }
         }
     }
-    tab name="Analytics" hide_floating_panes=true {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
-        pane command="claude-zellij" cwd="Projects/wevox/wevox-mono-web/web-progressive" {
-            args "Analytics" "--dangerously-skip-permissions"
+
+    tab name="brain" hide_floating_panes=true {
+        pane command="claude-zellij" cwd="brain" {
+            args "brain" "--dangerously-skip-permissions" "-c"
             start_suspended true
         }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
     }
+
     tab name="dotfiles" hide_floating_panes=true {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
         pane command="claude-zellij" cwd="dotfiles" {
-            args "dotfiles" "--dangerously-skip-permissions"
+            args "dotfiles" "--dangerously-skip-permissions" "-c"
             start_suspended true
         }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
     }
-    tab name="DesignSystem" hide_floating_panes=true {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
-        pane stacked=true {
-            pane command="claude-zellij" cwd="Projects/atrae-ui" expanded=true {
-                args "DesignSystem" "--dangerously-skip-permissions"
-                start_suspended true
-            }
-            pane cwd="Projects/atrae-ui"
-        }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
-    }
-    tab name="Logo" hide_floating_panes=true {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
-        pane command="claude-zellij" cwd="Projects/sandbox/wevox-logo-generator-handson" {
-            args "Logo" "--dangerously-skip-permissions"
-            start_suspended true
-        }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
-    }
+
     new_tab_template {
         pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
+            plugin location="zellij:compact-bar"
         }
         pane
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
-    }
-    swap_tiled_layout name="vertical" {
-        tab max_panes=5 {
-            pane size=1 borderless=true {
-                plugin location="tab-bar"
-            }
-            pane {
-                pane split_direction="vertical" {
-                    pane
-                    pane {
-                        children
-                    }
-                }
-            }
-            pane size=1 borderless=true {
-                plugin location="status-bar"
-            }
-        }
-        tab max_panes=8 {
-            pane size=1 borderless=true {
-                plugin location="tab-bar"
-            }
-            pane {
-                pane split_direction="vertical" {
-                    pane {
-                        children
-                    }
-                    pane {
-                        pane
-                        pane
-                        pane
-                        pane
-                    }
-                }
-            }
-            pane size=1 borderless=true {
-                plugin location="status-bar"
-            }
-        }
-        tab max_panes=12 {
-            pane size=1 borderless=true {
-                plugin location="tab-bar"
-            }
-            pane {
-                pane split_direction="vertical" {
-                    pane {
-                        children
-                    }
-                    pane {
-                        pane
-                        pane
-                        pane
-                        pane
-                    }
-                    pane {
-                        pane
-                        pane
-                        pane
-                        pane
-                    }
-                }
-            }
-            pane size=1 borderless=true {
-                plugin location="status-bar"
-            }
-        }
-    }
-    swap_tiled_layout name="horizontal" {
-        tab max_panes=4 {
-            pane size=1 borderless=true {
-                plugin location="tab-bar"
-            }
-            pane {
-                pane
-                pane
-            }
-            pane size=1 borderless=true {
-                plugin location="status-bar"
-            }
-        }
-        tab max_panes=8 {
-            pane size=1 borderless=true {
-                plugin location="tab-bar"
-            }
-            pane {
-                pane {
-                    pane split_direction="vertical" {
-                        children
-                    }
-                    pane split_direction="vertical" {
-                        pane
-                        pane
-                        pane
-                        pane
-                    }
-                }
-            }
-            pane size=1 borderless=true {
-                plugin location="status-bar"
-            }
-        }
-        tab max_panes=12 {
-            pane size=1 borderless=true {
-                plugin location="tab-bar"
-            }
-            pane {
-                pane {
-                    pane split_direction="vertical" {
-                        children
-                    }
-                    pane split_direction="vertical" {
-                        pane
-                        pane
-                        pane
-                        pane
-                    }
-                    pane split_direction="vertical" {
-                        pane
-                        pane
-                        pane
-                        pane
-                    }
-                }
-            }
-            pane size=1 borderless=true {
-                plugin location="status-bar"
-            }
-        }
-    }
-    swap_tiled_layout name="stacked" {
-        tab min_panes=5 {
-            pane size=1 borderless=true {
-                plugin location="tab-bar"
-            }
-            pane {
-                pane split_direction="vertical" {
-                    pane
-                    pane stacked=true {
-                        children
-                    }
-                }
-            }
-            pane size=1 borderless=true {
-                plugin location="status-bar"
-            }
-        }
-    }
-    swap_floating_layout name="staggered" {
-        floating_panes {
-        }
-    }
-    swap_floating_layout name="enlarged" {
-        floating_panes max_panes=10 {
-            pane {
-                height "90%"
-                width "90%"
-                x "5%"
-                y 1
-            }
-            pane {
-                height "90%"
-                width "90%"
-                x "5%"
-                y 2
-            }
-            pane {
-                height "90%"
-                width "90%"
-                x "5%"
-                y 3
-            }
-            pane {
-                height "90%"
-                width "90%"
-                x "5%"
-                y 4
-            }
-            pane {
-                height "90%"
-                width "90%"
-                x "5%"
-                y 5
-            }
-            pane {
-                height "90%"
-                width "90%"
-                x "5%"
-                y 6
-            }
-            pane {
-                height "90%"
-                width "90%"
-                x "5%"
-                y 7
-            }
-            pane {
-                height "90%"
-                width "90%"
-                x "5%"
-                y 8
-            }
-            pane {
-                height "90%"
-                width "90%"
-                x "5%"
-                y 9
-            }
-            pane {
-                height "90%"
-                width "90%"
-                x 10
-                y 10
-            }
-        }
-    }
-    swap_floating_layout name="spread" {
-        floating_panes max_panes=1 {
-            pane {
-                x "50%"
-                y "50%"
-            }
-        }
-        floating_panes max_panes=2 {
-            pane {
-                width "45%"
-                x "1%"
-                y "25%"
-            }
-            pane {
-                width "45%"
-                x "50%"
-                y "25%"
-            }
-        }
-        floating_panes max_panes=3 {
-            pane {
-                height "45%"
-                width "45%"
-                y "55%"
-            }
-            pane {
-                width "45%"
-                x "1%"
-                y "1%"
-            }
-            pane {
-                width "45%"
-                x "50%"
-                y "1%"
-            }
-        }
-        floating_panes max_panes=4 {
-            pane {
-                height "45%"
-                width "45%"
-                x "1%"
-                y "55%"
-            }
-            pane {
-                height "45%"
-                width "45%"
-                x "50%"
-                y "55%"
-            }
-            pane {
-                height "45%"
-                width "45%"
-                x "1%"
-                y "1%"
-            }
-            pane {
-                height "45%"
-                width "45%"
-                x "50%"
-                y "1%"
-            }
-        }
     }
 }

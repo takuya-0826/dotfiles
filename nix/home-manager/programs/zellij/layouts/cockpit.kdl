@@ -1,75 +1,134 @@
+// cockpit.kdl — 指揮・俯瞰レイアウト (ペイン = プロジェクト)
+//   起動: zellij --layout cockpit
+//
+// ┌──────────┬──────────┬──────────┬──────────┐
+// │ Frank    │ tiki-taka│ Forms    │ uSketch  │ ← claude --remote-control
+// │ +shell   │ +shell   │ +shell   │ +shell   │   (各セルは stacked)
+// ├──────────┼──────────┼──────────┼──────────┤
+// │ review   │ 自由     │ 自由     │ dotfiles │
+// │ watcher  │ shell    │ shell    │ claude   │
+// └──────────┴──────────┴──────────┴──────────┘
+//
+// ============================================================================
+// 設計メモ (2026-08-13)
+// ============================================================================
+//
+// ■ work.kdl との使い分け
+//
+//   work.kdl = 作業する画面 (タブ = PJ、1 タブに claude 1 枚、そこに座って打つ)
+//   cockpit  = 指揮・俯瞰する盤面 (ペイン = PJ、外から指示を流して様子を見る)
+//
+//   上流 EdV4H も同じ 2 枚立てで、本人の docs/terminal/zellij-layouts.md が
+//   cockpit を「複数プロジェクトの Claude Code を同時に表示し、全体を俯瞰する」
+//   「4x2 グリッドの指揮レイアウト」と説明している。--remote-control が付いて
+//   いるのが決定的で、cockpit の claude は座って打つ場所ではなく、外部から
+//   prompt を流し込んで動いている様子を眺める対象。だから 1 ペインが横 1/4 幅
+//   でも成立する。
+//
+//   ⚠️ 2026-08-11 に「まるちゃんは 1 画面に複数 PJ を並べていない」と判断して
+//   8 分割 (dev-hub) を退役させたのは、work.kdl しか見ていなかった誤り。
+//   8 分割とタブ = PJ は対立せず、用途が違うだけ。
+//
+// ■ 幾何 (split_direction の意味を実測で確定させた)
+//
+//   pty を割り当てた実セッションを起動し、session-metadata.kdl の pane_x /
+//   pane_y を読んで確認した (2026-08-13):
+//     split_direction="vertical"   → 子は【横並び】(x が変わる)
+//     split_direction="horizontal" → 子は【縦積み】(y が変わる)
+//   つまり外側 horizontal (2 行) × 内側 vertical (4 列) で 2 行 4 列になる。
+//   ※ 上流のドキュメントの図は「左列 = claude 4 つの 4 行 2 列」になっていて
+//     コードと食い違っている。図ではなくコードを見ること。
+//
+// ■ claude-zellij ではなく素の claude を使う
+//
+//   claude-zellij はタブ名を 🤖 / ✅ に切り替えるフック用の登録をするラッパー。
+//   cockpit は 1 タブに claude が 5 枚あるので、全員が同じタブ名を奪い合って
+//   意味を成さない。タブ名の切り替えが効くのは work.kdl 側 (1 タブ 1 claude)。
+//
+// ■ --remote-control には明示的に名前を渡す
+//
+//   `--remote-control [name]` は値が省略可能なオプションなので、直後に別のフラグ
+//   を置く書き方は解釈が曖昧になる。PJ 名を明示して、送信側から名前で指せる形に
+//   しておく。※ 送信側 (誰がどのコマンドで prompt を流すか) は未確認。当面は
+//   普通に座って打てる盤面として使い、送信の使い道は後から足す。
+//
+// ■ 全ペイン start_suspended (Enter 待ち)
+//
+//   gh-review-watcher も suspended にしてある。上流は自動起動だが、これは PR を
+//   検知して自動レビュー (= 課金) を走らせるので、盤面を開いただけで動き出すのは
+//   避ける。
+// ============================================================================
+
 layout {
     cwd "/Users/takuyamatsumoto"
-    tab name="Cockpit" hide_floating_panes=true {
+
+    default_tab_template {
         pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
+            plugin location="zellij:compact-bar"
         }
+        children
+    }
+
+    tab name="Cockpit" focus=true hide_floating_panes=true {
         pane split_direction="horizontal" {
-            pane split_direction="vertical" {
-                pane stacked=true {
-                    pane command="claude" cwd="Projects/wevox" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "-c"
+
+            // ---- 上段: PJ 別 claude (--remote-control) ----
+            pane split_direction="vertical" size="50%" {
+                pane stacked=true size="25%" {
+                    pane name="Frank" command="claude" cwd="Atrae/frank" expanded=true {
+                        args "--dangerously-skip-permissions" "--remote-control" "Frank" "-c"
                         start_suspended true
                     }
-                    pane cwd="Projects/wevox"
+                    pane cwd="Atrae/frank"
                 }
-                pane stacked=true {
-                    pane command="claude" cwd="Projects/wevox/wevox-mono-web/web-progressive" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "-c"
+                pane stacked=true size="25%" {
+                    pane name="tiki-taka" command="claude" cwd="LightSuccess" expanded=true {
+                        args "--dangerously-skip-permissions" "--remote-control" "tiki-taka" "-c"
                         start_suspended true
                     }
-                    pane cwd="Projects/wevox/wevox-mono-web/web-progressive"
-                    pane cwd="Projects/wevox/wevox"
+                    pane cwd="LightSuccess"
                 }
-                pane stacked=true {
-                    pane command="claude" cwd="Projects/wevox/wevox-rest-bff" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "-c"
+                pane stacked=true size="25%" {
+                    pane name="Forms" command="claude" cwd="Atrae/wevox-mono-web/web-progressive" expanded=true {
+                        args "--dangerously-skip-permissions" "--remote-control" "Forms" "-c"
                         start_suspended true
                     }
-                    pane cwd="Projects/wevox/wevox-rest-bff"
+                    pane cwd="Atrae/wevox-mono-web/web-progressive"
                 }
-                pane stacked=true {
-                    pane command="claude" cwd="Projects/wevox/wevox-front" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "-c"
+                pane stacked=true size="25%" {
+                    pane name="uSketch" command="claude" cwd="Atrae/usketch" expanded=true {
+                        args "--dangerously-skip-permissions" "--remote-control" "uSketch" "-c"
                         start_suspended true
                     }
-                    pane cwd="Projects/wevox/wevox-front"
-                    pane cwd="Projects/manifest"
+                    pane cwd="Atrae/usketch"
                 }
             }
-            pane split_direction="vertical" {
-                pane stacked=true {
-                    pane command="gh-review-watcher" expanded=true
-                    pane cwd="Projects"
+
+            // ---- 下段: watcher / 自由シェル / dotfiles ----
+            pane split_direction="vertical" size="50%" {
+                pane stacked=true size="25%" {
+                    pane name="review watcher" command="gh-review-watcher" expanded=true {
+                        start_suspended true
+                    }
+                    pane cwd="Atrae"
                 }
-                pane stacked=true {
-                    pane cwd="Projects" expanded=true
-                    pane cwd="Projects"
-                }
-                pane stacked=true {
-                    pane cwd="Projects" expanded=true
-                    pane cwd="Projects"
-                }
-                pane stacked=true {
-                    pane command="claude" cwd="dotfiles" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "-c"
+                pane name="free" size="25%" cwd="Atrae"
+                pane name="free" size="25%" cwd="Atrae"
+                pane stacked=true size="25%" {
+                    pane name="dotfiles" command="claude" cwd="dotfiles" expanded=true {
+                        args "--dangerously-skip-permissions" "--remote-control" "dotfiles" "-c"
                         start_suspended true
                     }
                     pane cwd="dotfiles"
                 }
             }
         }
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
     }
+
     new_tab_template {
         pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
+            plugin location="zellij:compact-bar"
         }
         pane
-        pane size=1 borderless=true {
-            plugin location="zellij:status-bar"
-        }
     }
 }

@@ -61,9 +61,9 @@
     frank = "_claude_in ~/Atrae/frank";
     gordon = "_claude_in ~/Atrae/frank/apps/gordon";
 
-    # zellij のタブ起動は zj-project (general|frank|ats|forms|all) に一本化した。
-    # 1 画面 8 ペインの dev-hub / zj-hub は 2026-08-11 に退役 (経緯は
-    # programs/zellij/layouts/frank.kdl 冒頭)。
+    # zellij は端末を開いた時点で auto-start が `zellij --layout work` を叩き、
+    # 8 タブ (= PJ) が常に立ち上がる。タブを開くためのランチャー (zj-project /
+    # zj-hub) は 2026-08-13 に退役した (経緯は programs/zellij/layouts/work.kdl 冒頭)。
 
     # Neovim
     v = "nvim";
@@ -143,8 +143,24 @@
     # タブ」の分だけ。しかも実データでは使用済み 27 件のうち 20 件が zellij
     # タブ 1 枚 = WezTerm のタブ側で作業を分ける運用であり、集約はそれを壊す。
     # 根本原因でないものを根拠に使い勝手を変えない。
+    #
+    # 2026-08-13、`zellij setup --generate-auto-start zsh` の eval をやめ、
+    # work レイアウトの直接起動に変えた。生成される中身は
+    # `ZELLIJ_AUTO_ATTACH == true` でなければ **素の `zellij`**、つまり毎回
+    # ランダム名の新規セッションを `default_layout` (compact = ペイン 1 枚) で
+    # 作るだけで、作業画面には決して着地しなかった (「毎回レイアウトがリセット
+    # される」の正体)。上流 EdV4H も ZELLIJ_AUTO_ATTACH を設定していないので
+    # 同じ挙動だが、あちらは作業時に `zellij --layout work` を手で打っている。
+    #
+    # attach ではなく毎回新規で開くのは意図的。まるちゃんの設計どおり
+    # 「セッションは使い捨て・レイアウトは毎回作り直す・継続性は claude の -c が
+    # 担う」に揃える (zellij の復元ダンプは claude ではなく MCP サーバを掴むので
+    # 信用できない → layouts/work.kdl 冒頭)。全ペイン start_suspended なので
+    # タブを 8 枚開いてもプロセスは 1 つも起きない。
+    #
+    # 単一セッションへの attach 集約をここでやらない理由は上記のとおり (93efd47)。
     if [[ -o interactive && -t 1 && -z "$ZELLIJ" && -z "$VSCODE_INJECTION" && -z "$CLAUDECODE" ]]; then
-      eval "$(zellij setup --generate-auto-start zsh)"
+      zellij --layout work
     fi
 
     # Enable vi mode
@@ -234,25 +250,29 @@
       command claude "$@"
     }
 
-    # zj-hub / dev-hub (1画面 8ペイン グリッド) は 2026-08-11 に退役した。
+    # zj-hub / dev-hub / zj-project は退役した。現在の zellij 環境は
+    # layouts/work.kdl (タブ = PJ、作業する画面) と layouts/cockpit.kdl
+    # (ペイン = PJ、--remote-control で俯瞰する指揮盤面) の 2 枚だけで、
+    # ランチャーは要らない (端末を開くと auto-start が work を開く)。
     #
-    # 1 画面を 8 分割して 4 PJ を並べる形は 2026-07-13 に「PJ = タブのオンデマンド
-    # 編成」へ再設計した時点で一度捨てており、2026-08-03 に旧 Mac の dev-hub を
-    # nix 管理下で復活させたのは出戻りだった。PJ をペインに焼き込むと PJ の増減・
-    # 移動のたびにレイアウト改修が要る (wevox-ats のパス消失で 2 回踏んだ)。
-    # 現在は zj-project (タブ = PJ) に一本化している。
+    # ⚠️ 2026-08-11 にここへ「まるちゃんの work.kdl はタブ = PJ で、1 画面に複数 PJ を
+    # 並べたペインは 1 つも無い」と書いて dev-hub を退役させたが、これは誤りだった。
+    # 上流 EdV4H には cockpit.kdl があり、まさにペイン = PJ をやっている (本人の
+    # docs/terminal/zellij-layouts.md が「複数プロジェクトの Claude Code を同時に
+    # 表示し、全体を俯瞰する」と説明している)。彼は 2 枚を用途で使い分けていて、
+    # 8 分割とタブ = PJ は対立しない。詳細は layouts/work.kdl 冒頭。
     #
     # ここにあった知見は移設済み:
-    #   - EXITED に attach しない理由 → programs/zellij/zj-project.sh
-    #   - 復元ダンプが MCP サーバを掴む件 → programs/zellij/layouts/frank.kdl
-    #   - レイアウト本体 → programs/zellij/_archived/dev-hub.kdl
+    #   - 復元ダンプが MCP サーバを掴む件 → programs/zellij/config.kdl
+    #     (session_serialization を外した理由として記述)
+    #   - レイアウトの設計メモ → programs/zellij/layouts/work.kdl 冒頭
+    #   - 旧 dev-hub 本体 → programs/zellij/_archived/dev-hub.kdl
     #
     # ★ 唯一ここにしか無かった知見なので書き残す: zellij の中から
     #   `zellij attach` を呼ぶと **入れ子**になる。キー入力は外側のセッションが
     #   先に食うのでフルスクリーン (Alt+f) やペイン移動が効かなくなる
     #   (ステータスバーが 2 本出ているのが入れ子のサイン)。内側から別セッションへ
     #   移るときは `zellij action switch-session` でクライアントを載せ替える。
-    #   zj-project は zellij 内では attach せずタブを足すだけなので該当しない。
 
     # コンテキスト固定ランチャー。 どこから打っても claude の着地先が一定になる。
     # サブシェル ( ) で cd するので、 終了後は元の cwd に戻る。
