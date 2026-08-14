@@ -145,7 +145,7 @@
     # 根本原因でないものを根拠に使い勝手を変えない。
     #
     # 2026-08-13、`zellij setup --generate-auto-start zsh` の eval をやめ、
-    # work レイアウトの直接起動に変えた。生成される中身は
+    # レイアウトの直接起動に変えた。生成される中身は
     # `ZELLIJ_AUTO_ATTACH == true` でなければ **素の `zellij`**、つまり毎回
     # ランダム名の新規セッションを `default_layout` (compact = ペイン 1 枚) で
     # 作るだけで、作業画面には決して着地しなかった (「毎回レイアウトがリセット
@@ -159,8 +159,13 @@
     # タブを 8 枚開いてもプロセスは 1 つも起きない。
     #
     # 単一セッションへの attach 集約をここでやらない理由は上記のとおり (93efd47)。
+    #
+    # 着地先は cockpit (8 分割の盤面) にしてある (2026-08-14 拓也判断)。
+    # 一度 work (タブ = PJ) を既定にしたが、実際に開いてみて「日常的に目に入るのは
+    # 8 分割であってほしい」となったので入れ替えた。work は `zellij --layout work`
+    # で開く。2 枚の役割分担そのものは変えていない (work = 作業 / cockpit = 俯瞰)。
     if [[ -o interactive && -t 1 && -z "$ZELLIJ" && -z "$VSCODE_INJECTION" && -z "$CLAUDECODE" ]]; then
-      zellij --layout work
+      zellij --layout cockpit
     fi
 
     # Enable vi mode
