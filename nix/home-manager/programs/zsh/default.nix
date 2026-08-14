@@ -61,9 +61,9 @@
     frank = "_claude_in ~/Atrae/frank";
     gordon = "_claude_in ~/Atrae/frank/apps/gordon";
 
-    # zellij は端末を開いた時点で auto-start が `zellij --layout work` を叩き、
-    # 8 タブ (= PJ) が常に立ち上がる。タブを開くためのランチャー (zj-project /
-    # zj-hub) は 2026-08-13 に退役した (経緯は programs/zellij/layouts/work.kdl 冒頭)。
+    # zellij のレイアウトは `zellij --layout work` / `--layout cockpit` を手で打つ
+    # (上流と同じ形)。タブを開くためのランチャー (zj-project / zj-hub) は
+    # 2026-08-13 に退役した (経緯は programs/zellij/layouts/work.kdl 冒頭)。
 
     # Neovim
     v = "nvim";
@@ -144,28 +144,34 @@
     # タブ 1 枚 = WezTerm のタブ側で作業を分ける運用であり、集約はそれを壊す。
     # 根本原因でないものを根拠に使い勝手を変えない。
     #
-    # 2026-08-13、`zellij setup --generate-auto-start zsh` の eval をやめ、
-    # レイアウトの直接起動に変えた。生成される中身は
-    # `ZELLIJ_AUTO_ATTACH == true` でなければ **素の `zellij`**、つまり毎回
-    # ランダム名の新規セッションを `default_layout` (compact = ペイン 1 枚) で
-    # 作るだけで、作業画面には決して着地しなかった (「毎回レイアウトがリセット
-    # される」の正体)。上流 EdV4H も ZELLIJ_AUTO_ATTACH を設定していないので
-    # 同じ挙動だが、あちらは作業時に `zellij --layout work` を手で打っている。
+    # ■ レイアウトはここで開かない (2026-08-14 拓也判断、上流と同じ形に戻した)
     #
-    # attach ではなく毎回新規で開くのは意図的。まるちゃんの設計どおり
-    # 「セッションは使い捨て・レイアウトは毎回作り直す・継続性は claude の -c が
-    # 担う」に揃える (zellij の復元ダンプは claude ではなく MCP サーバを掴むので
-    # 信用できない → layouts/work.kdl 冒頭)。全ペイン start_suspended なので
-    # タブを 8 枚開いてもプロセスは 1 つも起きない。
+    #   生成される中身は `ZELLIJ_AUTO_ATTACH == true` でなければ **素の `zellij`**
+    #   で、毎回ランダム名の新規セッションを default_layout (compact = ペイン 1 枚)
+    #   で作る。上流 EdV4H も同じで、まるちゃんは作業したくなった時点で
+    #   `zellij --layout work` / `--layout cockpit` を手で打っている。
     #
-    # 単一セッションへの attach 集約をここでやらない理由は上記のとおり (93efd47)。
+    #   2026-08-13 に一度ここを `zellij --layout work` (翌日 cockpit) の直接起動に
+    #   変えた。「端末を開くたびに空の 1 ペインに落ちて作業画面へ着地しない」を
+    #   潰すためで、実際それは直った。戻した理由は **使用感ただ 1 点** で、
+    #   「コマンドを 1 発打ちたいだけの端末でも 8 ペインの盤面が立ち上がるのが
+    #   重い」(2026-08-14 拓也)。
     #
-    # 着地先は cockpit (8 分割の盤面) にしてある (2026-08-14 拓也判断)。
-    # 一度 work (タブ = PJ) を既定にしたが、実際に開いてみて「日常的に目に入るのは
-    # 8 分割であってほしい」となったので入れ替えた。work は `zellij --layout work`
-    # で開く。2 枚の役割分担そのものは変えていない (work = 作業 / cockpit = 俯瞰)。
+    #   ❌ 「レイアウトを載せるとセッションが増える」は誤り (同日訂正)。
+    #     `zellij` も `zellij --layout X` も端末 1 つにつきセッション 1 つで同数。
+    #     増えるのはセッションあたりのペイン数 (1 → 8) だけで、全ペイン
+    #     start_suspended なのでプロセスは起きない。2026-08-03 の 185 個増殖は
+    #     195 件 (88%) が tty 無しのツール起動シェル由来で、人が開いた端末は
+    #     27 件 = そもそも問題ではなかった。**この判断とあの事故は無関係。**
+    #   ⇒ 端末を開いた直後は素の 1 ペイン。使うときに手で開く:
+    #        zellij --layout cockpit   # 8 分割の指揮盤面
+    #        zellij --layout work      # タブ = PJ の作業画面
+    #
+    #   ※ zellij の中から `zellij --layout` を打つと入れ子になる (ステータスバーが
+    #     2 本出るのがサイン)。別レイアウトへ移るときは新しい端末を開くか
+    #     Ctrl+o → d でデタッチしてから。
     if [[ -o interactive && -t 1 && -z "$ZELLIJ" && -z "$VSCODE_INJECTION" && -z "$CLAUDECODE" ]]; then
-      zellij --layout cockpit
+      eval "$(zellij setup --generate-auto-start zsh)"
     fi
 
     # Enable vi mode
