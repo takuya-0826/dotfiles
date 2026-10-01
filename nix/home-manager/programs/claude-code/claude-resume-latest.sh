@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # そのディレクトリの直近セッションを session-id 明示で resume する。
 #
-# 使い方: claude-resume-latest [--tab <tab-name>] [dir] [<claude への追加引数>]
-#   dir を省略すると $PWD。zellij レイアウトの command として使う想定。
-#   --tab を渡すと claude-zellij と同じタブ名登録を行い、hook による
-#   🤖 / ✅ のタブ名切り替えが効くようになる (2026-08-11 追加)。
+# 使い方: claude-resume-latest [dir] [<claude への追加引数>]
+#   dir を省略すると $PWD。herdr のペインに打ち込んで使う想定。
+#   旧 `--tab <name>` (zellij のタブ名 🤖/✅ hook 用登録) は 2026-10-01 の herdr 移行で
+#   廃止した。エージェント状態は herdr がネイティブに持つ (herdr integration install claude)。
 #
 # なぜ `claude --continue` を使わないか (2026-08-03):
 #   --continue は "current directory の最新会話" を継続するが、11MB / 5067 行の
@@ -17,18 +17,10 @@
 # セッションが 1 つも無ければ通常起動にフォールバックする (初回はこれになる)。
 set -uo pipefail
 
-# zellij 経由で遺伝してくる子セッションマーカーを外す (2026-08-04)。
+# マルチプレクサ経由で遺伝してくる子セッションマーカーを外す (2026-08-04)。
 # これが立っていると transcript 保存が OFF になり、exit 後に --resume 不能な
 # スタブ jsonl だけが残る。このスクリプトは人間用ペインの起動専用なので常に親。
 unset CLAUDE_CODE_CHILD_SESSION
-
-# --tab <name>: zellij のタブ名を hook 用に登録してから起動する。
-# 登録は claude 起動前に済ませる必要があるので、cd より先に処理する
-# (query-tab-names を引くだけなので cwd には依存しない)。
-if [ "${1:-}" = "--tab" ]; then
-  zellij-tab-register "${2:-}"
-  shift 2
-fi
 
 dir="${1:-$PWD}"
 [ $# -gt 0 ] && shift
@@ -36,7 +28,7 @@ dir="${1:-$PWD}"
 # 必ず cd する。--resume / --continue はどちらも「現在の cwd に紐づくセッション」
 # しか見ないため、cwd がずれていると ID を正しく渡しても
 # "No conversation found with session ID" になる (2026-08-03 に実測)。
-# zellij レイアウト側の cwd 指定に依存せず、ここで確定させる。
+# ペイン側の cwd 指定に依存せず、ここで確定させる。
 cd "$dir" || {
   echo "[claude-resume-latest] cannot cd to $dir" >&2
   exit 1

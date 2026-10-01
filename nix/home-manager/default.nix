@@ -62,12 +62,18 @@ in
       eza
       bat
       fd
+      ffmpeg
       direnv
       uv
       awscli2
       bruno
       mysql84
       lazysql
+      # herdr: ターミナルマルチプレクサ (2026-10-01 に zellij から移行、 上流 2026-08-13 と同形)。
+      # Homebrew formula の herdr (0.7.5) は削除し nixpkgs 版に一本化した。
+      herdr
+      # zellij は移行期間中だけ残す (既存セッションの退避用)。 herdr で一通り回ることを
+      # 確認したら消す。 旧レイアウト/ラッパーは programs/zellij/_archived/ に退避済み。
       zellij
       # watch-video skill の依存。 yt-dlp で動画/字幕取得、 ffmpeg (ffprobe 同梱) で
       # フレーム抽出とメタデータ取得。 ローカル文字起こしの mlx-whisper は nixpkgs に
@@ -192,21 +198,11 @@ in
     executable = true;
   };
 
-  home.file.".claude/hooks/zellij-tab-thinking.sh" = {
-    source = ./programs/claude-code/zellij-tab-thinking.sh;
-    executable = true;
-  };
-
-  home.file.".claude/hooks/zellij-tab-done.sh" = {
-    source = ./programs/claude-code/zellij-tab-done.sh;
-    executable = true;
-  };
-
-  # Claude Code zellij wrapper (claude-zellij command)
-  home.file.".local/bin/claude-zellij" = {
-    source = ./programs/claude-code/claude-zellij.sh;
-    executable = true;
-  };
+  # NOTE: Claude Code の作業状態 (working / idle / blocked) は herdr が
+  # ネイティブに持つ。 `herdr integration install claude` を 1 度実行すると
+  # ~/.claude/settings.json に hook が入り、 サイドバーに状態が出る。
+  # 旧 zellij 構成の claude-zellij / zellij-tab-thinking.sh / zellij-tab-done.sh と
+  # /tmp/zellij-tab-* マーカーはこれで不要になったため削除した。
 
   # そのディレクトリの直近セッションを --resume で開く。cwd を跨いで特定セッションを
   # 開き直したいとき用 (work.kdl の claude ペインは素の -c を使っている)
@@ -253,9 +249,51 @@ in
     executable = true;
   };
 
-  # Close "Conflict: <repo>#<num>" tab safely (used by pr-conflict-resolve handoff prompt)
+  # Open a "Review: <repo>#<num>" tab running review-pr (triggered by gh-review-watcher)
+  home.file.".local/bin/open-review-tab" = {
+    source = ./programs/claude-code/open-review-tab.sh;
+    executable = true;
+  };
+
+  # Close "Conflict: <repo>#<num>" tab (used by pr-conflict-resolve handoff prompt)
   home.file.".local/bin/close-conflict-tab" = {
     source = ./programs/claude-code/close-conflict-tab.sh;
+    executable = true;
+  };
+
+  # dev-server: run long-lived dev servers inside a herdr pane/tab so the
+  # Claude Code harness doesn't reap them with SIGTERM(143). See the
+  # dev-server skill. dev-serve-run is the internal in-pane wrapper.
+  home.file.".local/bin/dev-serve-run" = {
+    source = ./programs/claude-code/dev-server/dev-serve-run.sh;
+    executable = true;
+  };
+  home.file.".local/bin/dev-up" = {
+    source = ./programs/claude-code/dev-server/dev-up.sh;
+    executable = true;
+  };
+  home.file.".local/bin/dev-logs" = {
+    source = ./programs/claude-code/dev-server/dev-logs.sh;
+    executable = true;
+  };
+  home.file.".local/bin/dev-down" = {
+    source = ./programs/claude-code/dev-server/dev-down.sh;
+    executable = true;
+  };
+  home.file.".local/bin/dev-list" = {
+    source = ./programs/claude-code/dev-server/dev-list.sh;
+    executable = true;
+  };
+  home.file.".local/bin/dev-supervise" = {
+    source = ./programs/claude-code/dev-server/dev-supervise.sh;
+    executable = true;
+  };
+  # dev-ctl: sandbox-escape front-end. Claude's Bash sandbox blocks the herdr
+  # socket, so dev-up/dev-down don't work there — but scripts under ~/.claude/scripts/
+  # run OUTSIDE the sandbox when invoked by direct path. Claude drives dev servers via
+  # `~/.claude/scripts/dev-ctl {up|down|logs|list|supervise}`.
+  home.file.".claude/scripts/dev-ctl" = {
+    source = ./programs/claude-code/dev-server/dev-ctl.sh;
     executable = true;
   };
 
@@ -279,45 +317,31 @@ in
     recursive = true;
   };
 
-  # Zellij layouts
-  xdg.configFile."zellij/layouts" = {
-    source = ./programs/zellij/layouts;
-    recursive = true;
+  # herdr 設定。 レイアウトは herdr に宣言ファイル (旧 zellij の KDL 相当) が無く、
+  # 永続セッションが構成を保持する設計なので、 作り直し用に bootstrap スクリプトを置く。
+  xdg.configFile."herdr/config.toml" = {
+    source = ./programs/herdr/config.toml;
   };
 
-  # zj-project は 2026-08-13 に退役した。端末を開くと zsh の auto-start が
-  # `zellij --layout work` を叩き、8 タブ (= PJ) が常に立ち上がるようになったので、
-  # 「PJ タブをオンデマンドで開くランチャー」が要らなくなった。
-  # 経緯と設計メモは programs/zellij/layouts/work.kdl 冒頭。
-
-  # 「このペインはどのタブか」を /tmp に登録する。Claude Code の hook が読んで
-  # タブ名を 🤖 / ✅ に切り替える。claude-zellij と claude-resume-latest --tab の
-  # 両方から使う共有ヘルパー。
-  home.file.".local/bin/zellij-tab-register" = {
-    source = ./programs/zellij/zellij-tab-register.sh;
+  # herdr のタブを label で引くヘルパー (close-*-tab / review-pr / pr-conflict-resolve が使う)
+  home.file.".local/bin/herdr-tab-id" = {
+    source = ./programs/herdr/herdr-tab-id.sh;
     executable = true;
   };
 
-  # zj-plan — Product 企画オーケストレーション組織タブ (①Fable 指揮 / ②Fable 企画 /
-  # ③Sol レビュー watcher) を開くランチャー。静的な KDL は引数を取れないので、
-  # 対象ディレクトリごとにレイアウトを生成して new-session-with-layout する。
-  #
-  # nix 管理下に置く理由: 元は ~/.local/bin に手で置いていたが、同種の zj-role /
-  # zj-work は scratchpad (/private/tmp) に置いたまま昇格させず、2026-08-11 の
-  # 再起動で消滅した (zj-work は dangling symlink だけが残った)。ランチャーは
-  # 「再起動しても必ずそこにある」ことが値打ちなので、手置きしない。
-  home.file.".local/bin/zj-plan" = {
-    source = ./programs/zellij/zj-plan.sh;
+  # herdr-bootstrap <work|cockpit>: 旧 zellij KDL レイアウトの作り直し用
+  home.file.".local/bin/herdr-bootstrap" = {
+    source = ./programs/herdr/bootstrap.sh;
     executable = true;
   };
 
-  # zj-plan の ③ ペインに常駐する Sol (codex) レビュー watcher。
-  # .zj-plan/review-queue/*.md をポーリングして codex exec でレビューし、
-  # 結果を .zj-plan/reviews/ に出す。ファイルを介するので write-chars 不要。
-  home.file.".local/bin/sol-review-watch" = {
-    source = ./programs/zellij/sol-review-watch.sh;
-    executable = true;
-  };
+  # zellij 専用の自作ランチャー (zj-plan / sol-review-watch / zellij-tab-register) は
+  # 2026-10-01 の herdr 移行で退役し programs/zellij/_archived/ に退避した。
+  #   - zellij-tab-register: タブ名 🤖/✅ hook の共有ヘルパー → herdr がエージェント状態を
+  #     ネイティブに持つので不要
+  #   - zj-plan / sol-review-watch: 企画オーケストレーション組織タブ (KDL 生成) →
+  #     herdr に宣言レイアウトが無い。必要になったら herdr-bootstrap 方式で作り直す
+  # 旧 work.kdl / cockpit.kdl / claude-zellij も同じ場所にある。
 
   # Zellij 本体設定 (旧 Mac から移植)。 zellij は初回起動時に config.kdl を自動生成
   # するが、 それは既定値のダンプなので上書きしてよい。 差分は theme
@@ -325,6 +349,7 @@ in
   # / show_startup_tips false の 4 点。
   # session_serialization true は 2026-08-13 に外した (復元ダンプは claude ではなく
   # MCP サーバを掴むので信用できない。理由は config.kdl の当該箇所)。
+  # ※ 2026-10-01 herdr 移行後は退避用。zellij 本体を外すときに一緒に消す。
   xdg.configFile."zellij/config.kdl".source = ./programs/zellij/config.kdl;
 
   # Ghostty (常用ターミナル、 旧 Mac から移植)。 JetBrainsMono Nerd Font +

@@ -53,7 +53,7 @@
 
     # Claude
     ccd = "command claude --dangerously-skip-permissions";
-    ccdr = "command claude --dangerously-skip-permissions --remote-control";
+    cc = "command claude --remote-control";
 
     # Codex
     cod = "command codex --dangerously-bypass-approvals-and-sandbox";
@@ -64,9 +64,8 @@
     frank = "_claude_in ~/Atrae/frank";
     gordon = "_claude_in ~/Atrae/frank/apps/gordon";
 
-    # zellij のレイアウトは `zellij --layout work` / `--layout cockpit` を手で打つ
-    # (上流と同じ形)。タブを開くためのランチャー (zj-project / zj-hub) は
-    # 2026-08-13 に退役した (経緯は programs/zellij/layouts/work.kdl 冒頭)。
+    # ワークスペースは herdr の永続サーバが保持する。組み直すときだけ
+    # `herdr-bootstrap work` / `herdr-bootstrap cockpit` (docs/terminal/herdr-workspaces.md)。
 
     # Neovim
     v = "nvim";
@@ -115,66 +114,30 @@
     fi
 
     # Claude Code の子セッションマーカーを対話シェルでは常に外す (2026-08-04)。
-    # zellij サーバが Claude セッション内から起動されると、全ペインがこの変数を
-    # 遺伝して「自分はサブエージェントの子」と誤認し、transcript 保存が OFF になる
-    # (= exit すると --resume 不能・claude-resume-latest も永久に失敗)。
+    # マルチプレクサのサーバが Claude セッション内から起動されると、全ペインがこの
+    # 変数を遺伝して「自分はサブエージェントの子」と誤認し、transcript 保存が OFF に
+    # なる (= exit すると --resume 不能・claude-resume-latest も永久に失敗)。
     # 人間が打つ対話シェルから起動する claude は常に親セッションが正しい。
     # 本物の子セッションは claude が直接 spawn するので .zshrc を通らず影響しない。
     unset CLAUDE_CODE_CHILD_SESSION
 
-    # Auto-start Zellij
+    # Auto-start herdr (2026-10-01、zellij から移行。上流 EdV4H 2026-08-13 と同形)
     #
-    # 条件に「人間の端末に繋がっているか」(-t 1) の判定を入れているのが要点。
-    # 既定の判定は $ZELLIJ の有無だけで tty を見ないため、ツールが裏で
-    # 「.zshrc を読む対話シェル」を起動したときにも発火する。zellij は
-    # クライアント/サーバ分離型でデタッチしてもサーバが残り、GC も無いので
-    # 誰も見ないセッションが再起動まで増え続ける。各サーバはペイン名更新のため
-    # `ps -ao ppid,args` を定期実行するので、セッション数 × 全プロセス数で
-    # 負荷が自乗に効く。
+    # $HERDR_ENV は herdr が管理するペインの中でだけ "1" になるので、これで
+    # ネスト起動を防ぐ (herdr 側も experimental.allow_nested=false で二重に守る)。
+    # exec せず条件分岐で呼ぶのは、herdr から detach (prefix+q) したときに
+    # 素の zsh に戻れるようにするため。
     #
-    # 2026-08-03、これで 185 セッションまで増殖し Mac が実用不能になった
-    # (load 43 / 全プロセス 1248 / ps だけで CPU 618% / zellij RSS 2.26GB)。
-    # resurrect ダンプ 222 件のうち 195 件 (88%) が viewport 80 桁のまま
-    # = 一度も接続されていないゴーストで、すべて tty 無し由来。tty があれば
-    # 実端末サイズにリサイズされるので、80 桁は「誰も見ていない」の物証。
-    # 残り 27 件は実際に使ったセッションなので、そもそも問題ではない。
-    # launchd の定期ジョブは `/bin/zsh script.sh` の非対話実行で .zshrc を
-    # 読まないため無関係。CLAUDECODE は子プロセスに継承されるので保険で併記。
-    #
-    # 単一セッションへの集約 (`zellij attach -c dev`) も一度入れたが戻した。
-    # ゴーストの 88% は tty 判定だけで防げ、集約が減らせるのは「人間が開いた
-    # タブ」の分だけ。しかも実データでは使用済み 27 件のうち 20 件が zellij
-    # タブ 1 枚 = WezTerm のタブ側で作業を分ける運用であり、集約はそれを壊す。
-    # 根本原因でないものを根拠に使い勝手を変えない。
-    #
-    # ■ レイアウトはここで開かない (2026-08-14 拓也判断、上流と同じ形に戻した)
-    #
-    #   生成される中身は `ZELLIJ_AUTO_ATTACH == true` でなければ **素の `zellij`**
-    #   で、毎回ランダム名の新規セッションを default_layout (compact = ペイン 1 枚)
-    #   で作る。上流 EdV4H も同じで、まるちゃんは作業したくなった時点で
-    #   `zellij --layout work` / `--layout cockpit` を手で打っている。
-    #
-    #   2026-08-13 に一度ここを `zellij --layout work` (翌日 cockpit) の直接起動に
-    #   変えた。「端末を開くたびに空の 1 ペインに落ちて作業画面へ着地しない」を
-    #   潰すためで、実際それは直った。戻した理由は **使用感ただ 1 点** で、
-    #   「コマンドを 1 発打ちたいだけの端末でも 8 ペインの盤面が立ち上がるのが
-    #   重い」(2026-08-14 拓也)。
-    #
-    #   ❌ 「レイアウトを載せるとセッションが増える」は誤り (同日訂正)。
-    #     `zellij` も `zellij --layout X` も端末 1 つにつきセッション 1 つで同数。
-    #     増えるのはセッションあたりのペイン数 (1 → 8) だけで、全ペイン
-    #     start_suspended なのでプロセスは起きない。2026-08-03 の 185 個増殖は
-    #     195 件 (88%) が tty 無しのツール起動シェル由来で、人が開いた端末は
-    #     27 件 = そもそも問題ではなかった。**この判断とあの事故は無関係。**
-    #   ⇒ 端末を開いた直後は素の 1 ペイン。使うときに手で開く:
-    #        zellij --layout cockpit   # 8 分割の指揮盤面
-    #        zellij --layout work      # タブ = PJ の作業画面
-    #
-    #   ※ zellij の中から `zellij --layout` を打つと入れ子になる (ステータスバーが
-    #     2 本出るのがサイン)。別レイアウトへ移るときは新しい端末を開くか
-    #     Ctrl+o → d でデタッチしてから。
-    if [[ -o interactive && -t 1 && -z "$ZELLIJ" && -z "$VSCODE_INJECTION" && -z "$CLAUDECODE" ]]; then
-      eval "$(zellij setup --generate-auto-start zsh)"
+    # 上流に無い条件を 2 つ足している (zellij 時代の 2026-08-03 事故の再発防止):
+    #   -t 1          … 人間の端末に繋がっているときだけ。ツールが裏で起動する
+    #                   「.zshrc を読む対話シェル」から多重起動させない。
+    #   -z $CLAUDECODE … Claude Code の中から開いたシェルでも起動しない。
+    # 当時の経緯 (185 セッション増殖、tty 無しゴースト 88%) は
+    # docs/claude-code/_archived/zellij-integration.md と git log を参照。
+    # herdr はサーバ 1 本に全 workspace が載る設計なのでセッションは増殖しないが、
+    # 条件は無害なので残す。
+    if [[ -o interactive && -t 1 && -z "$HERDR_ENV" && -z "$VSCODE_INJECTION" && -z "$CLAUDECODE" ]]; then
+      herdr
     fi
 
     # Enable vi mode

@@ -167,7 +167,7 @@ for pr in "${PR_LINES[@]}"; do
       ;;
     HUMAN_NEEDED)
       N_HUMAN=$((N_HUMAN+1))
-      SUMMARY+="! $REPO#$NUM (zellij tab opened)\n"
+      SUMMARY+="! $REPO#$NUM (herdr tab opened)\n"
       ;;
     SKIPPED_CACHED)
       # 直近 24h で can_auto=false 判定済み & HEAD 不変。再処理せずスキップ

@@ -79,7 +79,7 @@ nix build .#darwinConfigurations.ATR-LAP-OSX-TAKUYA-MATSUMOTO.system
 
 ### Installed Development Tools
 - Version control: git, gh, lazygit
-- Terminal: wezterm, tmux
+- Terminal: wezterm, herdr (terminal multiplexer)
 - Editor: neovim
 - Search: ripgrep
 - Utilities: curl, jq, docker
@@ -91,6 +91,7 @@ nix build .#darwinConfigurations.ATR-LAP-OSX-TAKUYA-MATSUMOTO.system
 - `lg` → `lazygit`
 - `la` → `ls -a`
 - `ccd` → `claude --dangerously-skip-permissions`
+- `cc` → `claude --remote-control`
 - `cl` → `clear`
 
 ## Working with this Configuration
@@ -134,31 +135,88 @@ When compacting, preserve the following:
 - WezTerm is installed via Homebrew's nightly cask, not Nix
 - The configuration includes both Nix packages and Homebrew casks for different types of applications
 
-### Zellij タブ閉じる時の注意
+### herdr (ターミナルマルチプレクサ)
 
-**重要**: zellij タブを閉じる時は **絶対に `zellij action close-tab` を呼ばない**。`close-tab` は「今フォーカスのあるタブ」を閉じるコマンドであり、ユーザーが見ているタブを巻き込んで破壊する事故が頻発している。必ず `close-tab-by-id` を ID 指定で使うこと。
+zellij から移行済み。 スクリプトから触るときの要点だけ:
 
-事故パターン: `go-to-tab-name "<name>"` は対象タブが存在しないと**フォーカスを移動せず黙って失敗** (exit code 2)。続けて `close-tab` を実行すると**現在フォーカスのタブが閉じてしまう**。 `2>/dev/null` でエラーを潰していると気付かず、別のタブを破壊する。
-
-```bash
-# ❌ 絶対 NG: tab name が存在しないと、フォーカスのある別のタブを閉じてしまう
-zellij action go-to-tab-name "$TAB_NAME" 2>/dev/null
-zellij action close-tab
-
-# ❌ 絶対 NG: フォーカスのあるタブをそのまま閉じる (今いるタブが消える)
-zellij action close-tab
-
-# ✅ 安全: ID で明示的に指定 (なければ noop)
-TAB_ID=$(zellij action list-tabs --json | jq -r --arg n "$TAB_NAME" '.[] | select(.name == $n) | .tab_id')
-[ -n "$TAB_ID" ] && zellij action close-tab-by-id "$TAB_ID"
-```
+- **タブ/ペインの操作は必ず ID 指定。** `herdr tab close <tab_id>` / `herdr pane close <pane_id>` は
+  ID 必須なので、 zellij 時代の「裸の `close-tab` がフォーカス中のタブを巻き込む」事故は起きない。
+  自分のタブ/ペインは `$HERDR_TAB_ID` / `$HERDR_PANE_ID` で分かる。
+- **CLI の出力は socket API のエンベロープ付き JSON。** 配列は `.result.tabs[]` / `.result.panes[]` に
+  入っている (`.[]` ではない)。 エラー時は `{"error":{...}}` を出して exit 1。
+- **`tab create` は新タブの root pane まで返す** (`.result.root_pane.pane_id`)。 pane を引き直さなくてよい。
+- **コマンド付きでタブ/ペインを生やす形は無い。** `tab create` → `pane run <pane_id> "<cmd>"` の 2 段。
+  `pane run` はペインのシェルに打ち込んで Enter まで送るので、 引数は `printf %q` でクォートする。
+  Enter を送りたくない (旧 `start_suspended` 相当) なら `pane send-text`。
+- **タブ/ペインはコマンドが終了しても消えない** (`--close-on-exit` 相当が無い)。 後片付けは明示的に。
+- socket は `~/.config/herdr/[sessions/<name>/]herdr.sock` の固定パス。 `$TMPDIR` に依存しないので
+  **launchd から起動されるスクリプト** (gh-review-watcher / pr-conflict-check 等) は同じサーバーに届く。
+  **ただし Claude Code の Bash からは届かない**: herdr はサンドボックス例外から外れ、 socket 接続が
+  EPERM で塞がれた (2026-08-19 実測)。 Claude が herdr を触るときは `~/.claude/scripts/` 配下の
+  hatch 経由 (dev サーバーは `dev-ctl`) にする。 → サンドボックスの項を見よ。
 
 専用ヘルパー (使えるなら必ずこっちを優先):
 
+- `herdr-tab-id <label>` → label 一致のタブ ID を引く (無ければ空 + exit 1)
 - `close-conflict-tab <repo> <num>` → `Conflict: <repo>#<num>` タブを閉じる (pr-conflict-check 用)
 - `close-merged-review-tab <num> <repo>` → `Review: <repo>#<num>` タブを閉じる (gh-review-watcher 用)
+- `open-review-tab <url> <num> <repo>` → `Review: <repo>#<num>` タブを開いて review-pr を走らせる
+- `herdr-bootstrap <work|cockpit>` → 旧 zellij KDL レイアウト相当の workspace を組み直す
 
-参考実装: `nix/home-manager/programs/claude-code/close-conflict-tab.sh`, `close-merged-review-tab.sh`
+参考実装: `nix/home-manager/programs/herdr/`, `nix/home-manager/programs/claude-code/close-conflict-tab.sh`
+
+## サンドボックス (組織ポリシー / Claude Code の Bash)
+
+会社端末の Claude Code は Bash コマンドを OS 層のサンドボックス内で実行する (managed hook
+`/Library/Application Support/ClaudeCode/`)。セッション冒頭の `<sandbox-note>` が最新の正。
+**設定は時期により変わる** (2026-08 に数回変更あり)。以下は 2026-08-19 時点の要点。
+
+### 何が塞がれる / 何が例外か
+- **塞がれる**: unix ソケット接続 (nix daemon 等)、Mach IPC (pbcopy/pbpaste)、TCP listen、
+  **localhost の bind も connect も** (127.0.0.1 への直 curl/python は EPERM)、許可外ホスト通信、
+  ワークスペース・`/tmp/claude`・`$TMPDIR` **以外への書込**。
+- **例外 (サンドボックス外で走る)**: **行頭が** `git` / `gh` / `gcloud` / `bq` / `crit` 等の
+  許可コマンド、または `~/.claude/scripts/` 配下のスクリプトを**パス直接指定**で実行したとき。
+  判定はコマンド文字列のパターン一致。
+  (**`herdr` は以前は例外だったが 2026-08-19 時点で外れている** — bare `herdr …` は socket EPERM。
+  最新の正はセッション冒頭の `<sandbox-note>`。 例外リストは時期で変わるので herdr が再び入る可能性もある。)
+- **`bash script.sh` で包む・`&&`連結・パイプ・for/while に
+  入れると例外が外れてサンドボックス内に落ちる**ので、許可コマンドは行頭の単発で打つ
+  (作業ディレクトリは `cd &&` でなく Bash ツールの実行ディレクトリ指定で合わせる)。
+- **herdr の socket は Claude の Bash から塞がれている** → 素の `herdr` / `dev-up` / `dev-down` /
+  `herdr-tab-id` 等は EPERM で失敗する (`dev-up` は preflight の `herdr tab list` で exit 69)。
+  **dev サーバーは `~/.claude/scripts/dev-ctl {up|down|logs|list}` 経由で叩く** (scripts 例外で
+  サンドボックス外＝socket に届く。 実測で up→down 成功)。 `dev-list` は socket 不使用だが `kill -0` が
+  EPERM られ生きてるサーバも "dead" と誤表示するので、 状態確認も `dev-ctl list` を使う。
+  (launchd から起動される herdr スクリプト群はサンドボックス外なので従来どおり動く。)
+
+### localhost サーバと話す
+`~/.claude/scripts/lo-fetch <port> [path] [method]` を使う (127.0.0.1 固定の正規中継)。
+自分でサーバを bind したり直接 localhost に curl しない。サーバは人間がターミナルで起動する。
+
+### git worktree での作業
+- **作成・一覧は可** (`git worktree` は例外なので使える。 `herdr worktree` は socket 経由なので
+  Claude の Bash からは今は塞がれている)。
+- ただし**書込許可ルートは Bash ツールの作業ディレクトリに固定**され、コマンド内 `cd` では移らない。
+  → **worktree の中で type-check/lint/build すると EPERM で死ぬ** (書込ルート外だから)。
+- **中で作業できる worktree は次のいずれか**:
+  1. リポジトリの **`.claude/worktrees/` 配下** (常時書込可。ここに作るのが正規)
+  2. **`EnterWorktree` ツール**で作る (.claude/worktrees 配下・書込ルートが追従)
+  3. **サブエージェント** (Agent の `cwd=その worktree`、または `isolation:"worktree"`) に検証を投げる
+- 既存の兄弟ディレクトリ worktree (`<repo>-<name>` 等) はメイン Bash から検証不可 →
+  サブエージェント(cwd=worktree)に投げる / `.claude/worktrees/` へ移設 / その worktree でセッション起動。
+- **モノレポはリポジトリルートをセッション cwd に** (turbo 等が兄弟パッケージに書けず失敗するため)。
+
+### やってはいけない / 依頼に回すこと
+- **迂回しない**: chmod・サンドボックス外での再実行・別フラグ脱出等でサンドボックスを破らない。
+  正規ツールへの乗り換えは可 (Web取得は WebFetch、外部連携は MCP、`ax`/curl でシェルアウトしない)。
+- **git 書込みの別経路禁止**: ローカルの commit/push/PR が塞がれても MCP/GitHub API で作り直さない。
+  `index.lock: Operation not permitted` は**ロック競合でなく書込ルート不一致**。正規は「書込ルートを
+  対象に合わせてローカルで同じ操作を回す」(worktree の項) だけ。無理なら失敗内容をそのまま報告して止まる。
+- **mise install / mise use 等の導入系は不可** (承認を通しても OS 層は外れない)。読取(`mise ls`)・
+  導入済み実行は可。導入が要るときはユーザーにターミナル実行を依頼する。
+- 塞がれた操作で正規の代替が無ければ、**失敗コマンドと理由をそのまま報告して指示待ち** (黙って
+  「できません」と見送らない — 許可か不明ならまず試すか人間に確認)。
 
 ## PC 移行手順
 
@@ -233,6 +291,16 @@ if [ -d ~/Projects/poke-mate ]; then
   ln -sfn ~/Projects/poke-mate/skills/build-party-with-me ~/.claude/skills/poke-mate-build-party-with-me
   ln -sfn ~/Projects/poke-mate/skills/review-party ~/.claude/skills/poke-mate-review-party
 fi
+
+# 8. herdr: Claude Code 連携を入れる (~/.claude/settings.json に hook を書き込む。
+#    nix 管理外なので新 PC で 1 回だけ手動実行が要る)
+herdr integration install claude
+herdr integration status
+
+# 9. herdr のワークスペースを組み直す (旧 zellij の work.kdl / cockpit.kdl 相当)
+#    herdr を起動してから、 別ペイン or 起動後のシェルで:
+herdr-bootstrap work
+# herdr-bootstrap cockpit   # 必要なら
 ```
 
 ### 引き継がないもの

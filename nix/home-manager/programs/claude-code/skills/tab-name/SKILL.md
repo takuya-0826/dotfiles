@@ -1,25 +1,26 @@
 ---
 name: tab-name
 version: 1.0.0
-description: "Zellij: Set tab name based on current work context."
+description: "herdr: Set tab name based on current work context."
 ---
 
 # tab-name
 
-Set the current Zellij tab name based on the work context.
+Set the current herdr tab name based on the work context.
 
 ## Behavior
 
 1. Analyze the current conversation context, working directory, git branch, and task to determine a **short, descriptive tab name** (1-3 words, max 20 chars).
-2. Run the following commands to update the tab name:
+2. Rename this tab — `$HERDR_TAB_ID` identifies it, so no lookup and no risk of
+   renaming whichever tab happens to be focused:
 
 ```bash
-# Set the new tab name
-zellij action rename-tab "<NEW_NAME>"
-
-# Update the tab name cache so thinking/done hooks use the correct name
-echo "<NEW_NAME>" > /tmp/zellij-tab-name-${ZELLIJ_PANE_ID}
+herdr tab rename "$HERDR_TAB_ID" "<NEW_NAME>"
 ```
+
+The agent working/idle/blocked indicator is herdr's own (see `herdr integration
+install claude`), so the name only has to carry the work context — don't add
+status emoji.
 
 ## Guidelines for naming
 

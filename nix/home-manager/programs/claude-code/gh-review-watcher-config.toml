@@ -19,10 +19,10 @@ command = """@notifyDesktop@ \
   -sound default"""
 
 # 新規PR検出時: yoloラベルがなければ新しいタブでClaude Codeにレビューさせる
+# (open-review-tab が herdr タブを --no-focus で開いて review-pr を走らせる)
 [[on_new_pr]]
 name = "review-tab"
-command = """echo '{labels}' | grep -q yolo || (zellij action new-tab --name 'Review: {repo}#{number}' --close-on-exit -- \
-  review-pr '{url}' '{number}' '{repo}' && zellij action go-to-previous-tab)"""
+command = """echo '{labels}' | grep -q yolo || open-review-tab '{url}' '{number}' '{repo}'"""
 
 # 毎ポーリング: "yolo" ラベルがついていたらClaude Codeでレビュー判定（PR単位で1回のみ実行）
 [[on_poll]]
@@ -58,7 +58,7 @@ command = "gh pr checks {number} -R {repo} --web"
 
 [[actions]]
 name = "Re-review with Claude (new tab)"
-command = "zellij action new-tab --name 'Review: {repo}#{number}' --close-on-exit -- review-pr '{url}' '{number}' '{repo}'"
+command = "open-review-tab '{url}' '{number}' '{repo}'"
 
 [[actions]]
 name = "Copy URL"

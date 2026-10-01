@@ -15,7 +15,7 @@ flake.nix
 ├── Home Manager (ユーザー設定)
 │   ├── パッケージ (CLI ツール)
 │   ├── シェル設定 (zsh)
-│   ├── プログラム設定 (neovim, zellij, wezterm)
+│   ├── プログラム設定 (neovim, herdr, wezterm)
 │   └── ファイル配置 (Claude Code hooks, scripts)
 ├── nix-darwin (システム設定)
 │   ├── macOS defaults (Finder, Dock)
@@ -79,7 +79,7 @@ home.packages = with pkgs; [
   git gh lazygit
 
   # ターミナル
-  tmux zellij
+  herdr
 
   # エディタ
   # (neovim は programs.neovim で管理)

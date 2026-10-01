@@ -4,7 +4,7 @@ Nix 管理の macOS dotfiles + Claude Code マルチエージェントワーク�
 
 ## ハイライト
 
-- **Zellij + Claude Code 統合** — タブ名が自動で 🤖(思考中) / ✅(完了) に切り替わり、10プロジェクトの並行作業を一目で管理
+- **herdr + Claude Code 統合** — サイドバーが各エージェントの working / idle / blocked を表示し、10プロジェクトの並行作業を一目で管理
 - **カスタムスキル** — `/renovate`, `/update-pr`, `/worktree-cleanup` など PR ライフサイクルを自動化する6つのスキル
 - **日報自動生成** — Git コミット + Claude Code セッションログ + Google Tasks → Notion に自動投稿
 - **自作 Rust TUI ツール** — flake input として管理し、dotfiles と一緒にインストール
@@ -34,7 +34,7 @@ nix run .#update
 
 | ドキュメント | 内容 |
 |------------|------|
-| [Zellij 統合](docs/claude-code/zellij-integration.md) | Hooks によるタブステータス連動、Cockpit レイアウト、macOS 通知 |
+| [herdr 統合](docs/claude-code/herdr-integration.md) | エージェント状態のサイドバー表示、スクリプトからの操作、macOS 通知 |
 | [カスタムスキルガイド](docs/claude-code/custom-skills-guide.md) | SKILL.md の書き方 + 6つの自作スキル解説 |
 | [日報自動化](docs/claude-code/daily-report-automation.md) | Git + セッションログ + Notion の自動日報パイプライン |
 | [PR ワークフロー](docs/claude-code/pr-workflow.md) | PR 作成・更新・Renovate マージ・Worktree クリーンアップ |
@@ -51,7 +51,7 @@ nix run .#update
 
 | ドキュメント | 内容 |
 |------------|------|
-| [Zellij レイアウト](docs/terminal/zellij-layouts.md) | Cockpit / Work レイアウトの設計思想と KDL の書き方 |
+| [herdr ワークスペース](docs/terminal/herdr-workspaces.md) | Cockpit / Work ワークスペースの設計思想と bootstrap の書き方 |
 | [Zsh 生産性設定](docs/terminal/zsh-productivity.md) | エイリアス、vi-mode、fzf/zoxide、カスタム関数 |
 
 ## リポジトリ構成
@@ -70,11 +70,11 @@ dotfiles/
     │   ├── default.nix                # ユーザー設定 (パッケージ, セッション変数)
     │   └── programs/
     │       ├── claude-code/           # Hooks, スキル, ラッパースクリプト
-    │       │   ├── claude-zellij.sh
     │       │   ├── daily-report.sh
     │       │   ├── notify-done.sh
-    │       │   ├── zellij-tab-thinking.sh
-    │       │   ├── zellij-tab-done.sh
+    │       │   ├── open-review-tab.sh
+    │       │   ├── close-conflict-tab.sh
+    │       │   ├── dev-server/
     │       │   └── skills/
     │       │       ├── daily-report/
     │       │       ├── pane-name/
@@ -82,10 +82,9 @@ dotfiles/
     │       │       ├── tab-name/
     │       │       ├── update-pr/
     │       │       └── worktree-cleanup/
+    │       ├── herdr/                 # herdr 設定 + bootstrap (work, cockpit)
     │       ├── neovim/                # Neovim 設定
     │       ├── wezterm/               # WezTerm 設定
-    │       ├── zellij/
-    │       │   └── layouts/           # Zellij レイアウト (work, cockpit)
     │       └── zsh/                   # Zsh 設定
     └── nix-darwin/
         └── default.nix               # macOS システム設定
@@ -96,7 +95,7 @@ dotfiles/
 | カテゴリ | ツール |
 |---------|-------|
 | パッケージ管理 | [Nix](https://nixos.org/) + [Home Manager](https://github.com/nix-community/home-manager) + [nix-darwin](https://github.com/LnL7/nix-darwin) |
-| ターミナル | [WezTerm](https://wezfurlong.org/wezterm/) + [Zellij](https://zellij.dev/) |
+| ターミナル | [WezTerm](https://wezfurlong.org/wezterm/) + [herdr](https://herdr.dev/) |
 | エディタ | [Neovim](https://neovim.io/) (nightly) |
 | AI | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) + [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
 | シェル | Zsh + Oh-my-zsh + fzf + zoxide |

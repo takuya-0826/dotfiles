@@ -130,7 +130,7 @@ Renovate が作成した依存関係更新 PR を自動で rebase → CI 待機 
 
 → 詳細: [`skills/worktree-cleanup/SKILL.md`](../../nix/home-manager/programs/claude-code/skills/worktree-cleanup/SKILL.md)
 
-### 4. `/tab-name` — Zellij タブ名の設定
+### 4. `/tab-name` — herdr タブ名の設定
 
 作業コンテキストに基づいてタブ名を自動設定する。
 
@@ -139,11 +139,12 @@ Renovate が作成した依存関係更新 PR を自動で rebase → CI 待機 
 ```
 
 - git ブランチ名、作業内容、ディレクトリ名から短い名前を生成
-- `/tmp/zellij-tab-name-*` キャッシュも更新（thinking/done Hook と連携）
+- `$HERDR_TAB_ID` を指定してリネームするので、フォーカス中の別タブを触る心配がない
+- 作業状態 (working / idle / blocked) は herdr のサイドバーが持つので、名前に絵文字は付けない
 
 → 詳細: [`skills/tab-name/SKILL.md`](../../nix/home-manager/programs/claude-code/skills/tab-name/SKILL.md)
 
-### 5. `/pane-name` — Zellij ペイン名の設定
+### 5. `/pane-name` — herdr ペイン名の設定
 
 マルチペイン構成でペインの役割名を設定する。
 

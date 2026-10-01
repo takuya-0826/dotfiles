@@ -39,7 +39,6 @@
     brews = [
       "goenv"
       "bun"
-      "herdr" # Claude Code の SessionStart hook が依存
       "railway"
       "pandoc"
       "poppler"

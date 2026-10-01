@@ -1,20 +1,21 @@
 ---
 name: pane-name
 version: 1.0.0
-description: "Zellij: Set pane name based on current work context."
+description: "herdr: Set pane name based on current work context."
 ---
 
 # pane-name
 
-Set the current Zellij pane name based on the work context.
+Set the current herdr pane name based on the work context.
 
 ## Behavior
 
 1. Analyze the current conversation context, working directory, git branch, and task to determine a **short, descriptive pane name** (1-3 words, max 20 chars).
-2. Run the following command to update the pane name:
+2. Run the following command to update the pane name — `$HERDR_PANE_ID` is this
+   pane, so nothing else can be renamed by mistake:
 
 ```bash
-zellij action rename-pane "<NEW_NAME>"
+herdr pane rename "$HERDR_PANE_ID" "<NEW_NAME>"
 ```
 
 ## Guidelines for naming

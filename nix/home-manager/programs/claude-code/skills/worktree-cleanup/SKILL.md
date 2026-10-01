@@ -133,10 +133,10 @@ done
 cd "$WORKTREE_DIR"
 ```
 
-5. 必要に応じてzellijペイン名を更新:
+5. 必要に応じて herdr ペイン名を更新:
 
 ```bash
-zellij action rename-pane "$NEW_BRANCH"
+herdr pane rename "$HERDR_PANE_ID" "$NEW_BRANCH"
 ```
 
 作成しない場合はスキップ。

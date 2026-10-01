@@ -46,90 +46,215 @@ else
   CI_LINE="— (status check なし)"
 fi
 
-# Step 1: claude -p でレビュー実行、結果を $REVIEW_RESULT に保存 (生データは後段の [c] でも使う)
-REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "/review ${URL}" 2>&1)
+# Step 0.7: diff を1回だけ取得し、各行に絶対行番号 [LINE N] を付与しておく (グローバル)。
+# これを (a) 構造化抽出の入力、(b) print_hunk の hunk 表示、の両方で使い回す。
+# +行・コンテキスト行(スペース始まり)にタグを付ける。削除行(-)は変更後行番号を持たないので付けない。
+DIFF=""
+ANNOTATED_DIFF=""
+build_annotated_diff() {
+  DIFF=$(gh pr diff "$NUMBER" -R "$REPO" 2>/dev/null || true)
+  if [[ -z "${DIFF// }" ]]; then ANNOTATED_DIFF=""; return 0; fi
+  ANNOTATED_DIFF=$(printf '%s\n' "$DIFF" | awk '
+    /^diff --git/ { file="" }
+    /^\+\+\+ / { file=substr($0, 7); print; next }
+    /^--- / { print; next }
+    /^@@ / {
+      s = $0
+      sub(/^@@ -[0-9,]+ \+/, "", s)
+      sub(/,.*/, "", s)
+      newline = s + 0
+      print
+      next
+    }
+    file != "" && /^[-+ ]/ {
+      prefix = substr($0, 1, 1)
+      if (prefix == "-") {
+        print
+      } else {
+        printf "[LINE %d] %s\n", newline, $0
+        newline++
+      }
+      next
+    }
+    { print }
+  ')
+}
+build_annotated_diff
 
-# Step 2: $REVIEW_RESULT を固定テンプレートに再整形 (タブで一貫した5セクション構造で見るため)
-REFORMAT_PROMPT="以下は PR #${NUMBER} (${REPO}) に対するコードレビュー結果です。
-これを下記の固定テンプレートに再整形してください。
-ターミナル (zellij タブ) で人間が読むことを想定しており、emoji と区切り罫線で
-セクションを視認しやすくします。 内容は元レビューにあるものだけを使い、勝手に増やさない。
+# print_hunk <path> <line> [ctx]: ANNOTATED_DIFF から該当ファイルの、[LINE <line>] を含む
+# hunk の窓 (±ctx 行) を出力する。対象行に ▶、行番号ガター付き、削除行(-)も窓内なら表示。
+# 該当行が diff に無ければ「diff に該当箇所なし」。POSIX awk (macOS の BWK awk) で書く。
+print_hunk() {
+  local path="$1" line="$2" ctx="${3:-3}"
+  if [[ -z "${ANNOTATED_DIFF// }" ]]; then echo "     （diff 取得なし）"; return; fi
+  printf '%s\n' "$ANNOTATED_DIFF" | awk -v path="$path" -v target="$line" -v ctx="$ctx" '
+    function flush(   i,start,end,mark,gut,col,c,z) {
+      if (!hit) { n=0; return }
+      z="\033[0m"
+      start=tgt-ctx; if(start<1)start=1
+      end=tgt+ctx;   if(end>n)end=n
+      for(i=start;i<=end;i++){
+        c=substr(text[i],1,1)
+        if(c=="+") col="\033[32m"; else if(c=="-") col="\033[31m"; else col=""
+        mark=(num[i]==target)?"▶":" "
+        if(num[i]<0) gut="    "; else gut=sprintf("%4d",num[i])
+        printf "   %s %s | %s%s%s\n", mark, gut, col, text[i], z
+      }
+      printed=1; n=0; hit=0
+    }
+    BEGIN{ infile=0; n=0; hit=0; printed=0 }
+    /^diff --git/ { if(infile) flush(); infile=0; n=0; hit=0; next }
+    /^--- / { next }
+    /^\+\+\+ / { f=substr($0,7); infile=(f==path)?1:0; n=0; hit=0; next }
+    /^@@ / { if(infile) flush(); n=0; hit=0; next }
+    {
+      if(!infile) next
+      if(substr($0,1,6)=="[LINE "){
+        rb=index($0,"]")
+        num[++n]=substr($0,7,rb-7)+0
+        text[n]=substr($0,rb+2)
+        if(num[n]==target){hit=1;tgt=n}
+      } else if(substr($0,1,1)=="-"){
+        num[++n]=-1
+        text[n]=$0
+      }
+    }
+    END{ if(infile) flush(); if(!printed) print "     （diff に該当箇所なし）" }
+  '
+}
 
-== 出力テンプレート (このまま、コードフェンスで包まない) ==
+# render_section <severity> <emoji> <title>: FINDINGS_JSON から該当 severity の指摘を並べ、
+# 各指摘の直下に print_hunk で実 diff を出す。
+render_section() {
+  local sev="$1" emoji="$2" title="$3"
+  local n
+  n=$(echo "$FINDINGS_JSON" | jq --arg s "$sev" '[.findings[]? | select(.severity==$s)] | length' 2>/dev/null || echo 0)
+  echo "## ${emoji} ${title} (${n})"
+  if [ "${n:-0}" -eq 0 ]; then echo "なし"; echo ""; return; fi
+  local i=0 path line body loc
+  while [ "$i" -lt "$n" ]; do
+    path=$(echo "$FINDINGS_JSON" | jq -r --arg s "$sev" --argjson i "$i" '[.findings[]?|select(.severity==$s)][$i].path // ""')
+    line=$(echo "$FINDINGS_JSON" | jq -r --arg s "$sev" --argjson i "$i" '[.findings[]?|select(.severity==$s)][$i].line // empty')
+    body=$(echo "$FINDINGS_JSON" | jq -r --arg s "$sev" --argjson i "$i" '[.findings[]?|select(.severity==$s)][$i].body // ""')
+    loc="$path"; [ -n "$line" ] && loc="${path}:${line}"
+    echo "${emoji} ${loc} — ${body}"
+    if [ -n "$path" ] && [ -n "$line" ]; then
+      print_hunk "$path" "$line"
+    else
+      echo "     （位置情報なし — 変更行外の指摘）"
+    fi
+    echo ""
+    i=$((i + 1))
+  done
+}
 
-╔══════════════════════════════════════════════════════════════════╗
-║  PR #${NUMBER} — ${REPO}${PR_DRAFT_BADGE}
-║  ${PR_TITLE}
-╚══════════════════════════════════════════════════════════════════╝
+# render_review: FINDINGS_JSON + PR メタ + ANNOTATED_DIFF から、タブ表示を shell で組み立てる。
+render_review() {
+  echo "╔══════════════════════════════════════════════════════════════════╗"
+  echo "║  PR #${NUMBER} — ${REPO}${PR_DRAFT_BADGE}"
+  echo "║  ${PR_TITLE}"
+  echo "╚══════════════════════════════════════════════════════════════════╝"
+  echo ""
+  echo "## 📌 PR Info"
+  echo "- 👤 Author:  ${PR_AUTHOR}"
+  echo "- 🌿 Branch:  \`${PR_HEAD}\` → \`${PR_BASE}\`"
+  echo "- 📊 Diff:    +${PR_ADD} / -${PR_DEL}  (${PR_FILES} files)"
+  echo "- 🗓  Created: ${PR_CREATED}"
+  echo "- 🧭 State:   ${PR_STATE}"
+  echo "- 🚦 CI:      ${CI_LINE}"
+  echo "- 🔗 URL:     ${URL}"
+  echo ""
+  echo "────────────────────────────────────────────────────────────────────"
 
-## 📌 PR Info
-- 👤 Author:  ${PR_AUTHOR}
-- 🌿 Branch:  \`${PR_HEAD}\` → \`${PR_BASE}\`
-- 📊 Diff:    +${PR_ADD} / -${PR_DEL}  (${PR_FILES} files)
-- 🗓  Created: ${PR_CREATED}
-- 🧭 State:   ${PR_STATE}
-- 🚦 CI:      ${CI_LINE}
-- 🔗 URL:     ${URL}
+  local verdict reason vemoji
+  verdict=$(echo "$FINDINGS_JSON" | jq -r '.verdict // "DISCUSS"')
+  reason=$(echo "$FINDINGS_JSON" | jq -r '.verdict_reason // ""')
+  case "$verdict" in
+    APPROVE)         vemoji="✅" ;;
+    REQUEST_CHANGES) vemoji="⛔" ;;
+    SKIP)            vemoji="⏭️" ;;
+    *)               vemoji="💬" ;;
+  esac
+  echo "## 🎯 Verdict"
+  echo "${vemoji} ${verdict} — ${reason}"
+  echo ""
+  echo "## 📋 Summary"
+  echo "$FINDINGS_JSON" | jq -r '.summary[]? | "- " + .'
+  local sc
+  sc=$(echo "$FINDINGS_JSON" | jq -r '(.summary // []) | length' 2>/dev/null || echo 0)
+  [ "${sc:-0}" -eq 0 ] && echo "- (なし)"
+  echo ""
+  echo "────────────────────────────────────────────────────────────────────"
+  render_section blocker    "⛔" "Blockers"
+  echo "────────────────────────────────────────────────────────────────────"
+  render_section suggestion "💡" "Suggestions"
+  echo "────────────────────────────────────────────────────────────────────"
+  render_section note       "📝" "Notes"
+}
 
-────────────────────────────────────────────────────────────────────
+# レビュー生成 + 構造化抽出 + 表示。[r] で丸ごと再実行できる。
+# REVIEW_RESULT (生レビュー) と FINDINGS_JSON (構造化) をグローバルに残す ([d]/[c] が使う)。
+REVIEW_RESULT=""
+FINDINGS_JSON='{"findings":[]}'
+run_review() {
+  echo "🔍 レビュー生成中..."
+  # Step 1: claude -p でレビュー実行
+  REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "/review ${URL}" 2>&1 || true)
+  if [[ -z "${REVIEW_RESULT// }" ]]; then
+    echo "⚠️  レビュー生成に失敗しました（claude が空応答）。[r] でやり直せます。"
+    return 1
+  fi
 
-## 🎯 Verdict
-<APPROVE | REQUEST_CHANGES | DISCUSS | SKIP> — <1行の理由>
+  # Step 2: 生レビュー + annotated diff を構造化 JSON に抽出 (verdict/summary/findings)。
+  # findings の line は [LINE N] の番号をそのまま使わせる (自前計算させない = 実績ある手法)。
+  local EXTRACT_PROMPT RAW
+  EXTRACT_PROMPT="以下は PR #${NUMBER} (${REPO}) のコードレビュー結果と annotated diff です。
+これを解析し、下記スキーマの JSON を1つだけ出力してください。JSON 以外の文字列・コードフェンス・前置き・後置きは一切出力しない。
 
-## 📋 Summary
-- <変更の要点を 3 bullet 以内>
+スキーマ:
+{
+  \"verdict\": \"APPROVE | REQUEST_CHANGES | DISCUSS | SKIP のいずれか\",
+  \"verdict_reason\": \"1行の理由\",
+  \"summary\": [\"変更の要点を3項目以内\"],
+  \"findings\": [
+    {\"severity\": \"blocker | suggestion | note\", \"path\": \"変更ファイルのパス\", \"line\": 42, \"side\": \"RIGHT\", \"body\": \"指摘内容(日本語で簡潔に)\"}
+  ]
+}
 
-────────────────────────────────────────────────────────────────────
+ルール:
+- 内容は元レビューにある事実だけを使う。勝手に増やさない。
+- severity: merge をブロックすべき問題=blocker、推奨修正=suggestion、それ以外の気づき/praise/確認点=note。
+- line: annotated diff の各行頭に付いている [LINE N] の N をそのまま使う (自分で計算しない)。該当行が特定できない指摘は line を null にする。
+- path: [LINE N] が付いている該当ファイル (+++ b/... のパスから先頭の b/ を除いたもの)。
+- side は常に \"RIGHT\"。
+- 元レビューが「issues なし / No issues found」系なら verdict=APPROVE、findings=[]。
+- 元レビューが「closed/draft でレビュー対象外」系なら verdict=SKIP、findings=[]。
+- 指摘が無ければ findings=[]。
 
-## ⛔ Blockers (N)
-- [ ] <file:line> — <merge をブロックすべき問題>
-  <なぜブロッカーか / 想定影響を 1-2 行で>
+--- ANNOTATED DIFF ---
+${ANNOTATED_DIFF}
 
-(無ければ \"なし\" の一行のみ)
-
-────────────────────────────────────────────────────────────────────
-
-## 💡 Suggestions (N)
-- <file:line> — <推奨修正>
-  <推奨理由を 1-2 行で>
-
-(無ければ \"なし\" の一行のみ)
-
-────────────────────────────────────────────────────────────────────
-
-## 📝 Notes (N)
-- <file:line> — <それ以外の気づき / Praise / 確認したい点>
-
-(無ければ \"なし\" の一行のみ)
-
-== 厳格なルール ==
-
-- PR Info セクション (👤 Author / 🌿 Branch / 📊 Diff / 🗓 Created / 🧭 State / 🚦 CI / 🔗 URL) はテンプレートに記載された値をそのまま出力する。 値の改変・省略・追加禁止。
-- 元レビューに無い事実を追加しない。 再整形と要約のみ。
-- 各セクションの (N) は実件数を入れる (例: \"## ⛔ Blockers (2)\")。 0 なら (0)。
-- 元レビューが \"issues なし\" / \"No issues found\" 系なら Verdict=APPROVE。 Blockers/Suggestions/Notes は (0) で \"なし\"。
-- 元レビューが \"PR が closed/draft でレビュー対象外\" 系で実質レビューされていない場合は Verdict=SKIP、各セクションは \"レビュー対象外\"。
-- Verdict の絵文字対応: 🎯 は常にそのまま、Verdict 文字列の後に APPROVE なら ✅ / REQUEST_CHANGES なら ⛔ / DISCUSS なら 💬 / SKIP なら ⏭️ を付ける。 例: \"✅ APPROVE — テストカバー十分\"
-- セクション順序・見出し・絵文字・罫線は固定。 空でも見出しは消さない。
-- Markdown コードフェンスで全体を包まない (タブに垂れ流すため)。
-- テンプレート見出し (Verdict/Summary/Blockers/Suggestions/Notes) は英語固定、内容は元レビューの言語に従う。
-- 元レビューに具体的な file:line が含まれていれば必ず残す (情報量を落とさない)。
-
-== 再整形対象 (元レビュー) ==
-
+--- REVIEW ---
 ${REVIEW_RESULT}"
 
-FORMATTED_RESULT=$(claude --dangerously-skip-permissions -p "$REFORMAT_PROMPT" 2>&1 || echo "")
+  RAW=$(claude --dangerously-skip-permissions -p "$EXTRACT_PROMPT" 2>&1 || true)
+  # コードフェンス等を剥がして最初の { ... } を取り出す
+  FINDINGS_JSON=$(printf '%s\n' "$RAW" | sed -n '/^{/,/^}/p')
+  if ! echo "$FINDINGS_JSON" | jq -e . >/dev/null 2>&1; then
+    echo "⚠️  構造化抽出に失敗しました。生レビューをそのまま表示します。"
+    echo ""
+    echo "$REVIEW_RESULT"
+    echo ""
+    FINDINGS_JSON='{"findings":[]}'
+    return 0
+  fi
 
-# reformat が空 / 失敗したら fallback として元レビューをそのまま出す
-if [[ -z "${FORMATTED_RESULT// }" ]]; then
-  echo "⚠️  reformat 失敗。 元レビューをそのまま表示します。"
+  render_review
   echo ""
-  echo "$REVIEW_RESULT"
-else
-  echo "$FORMATTED_RESULT"
-fi
-echo ""
+}
+
+# 初回レビュー生成（失敗してもメニューは出す。[r] でやり直せる）
+run_review || true
 
 # Step 2.5: CI が失敗しているなら自動で request-changes を送る。
 # gh-review-watcher 経由でタブが開くたびに走るので、既に自分の CHANGES_REQUESTED が
@@ -161,99 +286,75 @@ EOF
 fi
 
 # 分析完了後、このレビュータブにフォーカスを移動
-zellij action go-to-tab-name "Review: ${REPO}#${NUMBER}" 2>/dev/null || true
+REVIEW_TAB_ID=$(herdr-tab-id "Review: ${REPO}#${NUMBER}" 2>/dev/null || true)
+[ -n "$REVIEW_TAB_ID" ] && herdr tab focus "$REVIEW_TAB_ID" >/dev/null 2>&1 || true
 
-# Step 2: 選択肢を提示
+# 選択肢を提示（メニューはループ）。API 失敗時は abort せずメニューに戻る:
+#   - approve/comment が失敗したら「もう一度同じキー」で再実行できる（冪等な再送）。
+#   - [r] はレビュー生成（claude /review + 構造化抽出 + 表示）を丸ごとやり直す。
+# アクション実行中は set -e を止め、各 API 呼び出しの失敗を明示チェックして
+# 「失敗→メニューへ戻す／成功→exit 0(=タブ close)」に振り分ける。
+set +e
+while true; do
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  [a] Approve this PR"
 echo "  [c] Comment concerns as pending review (open in browser)"
 echo "  [d] Discuss with Claude Code"
 echo "  [o] Open in browser"
+echo "  [r] Re-review (レビューをもう一度生成し直す)"
 echo "  [q] Quit"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 read -r -p "Choose action: " choice
 
+# [r] はレビュー生成（claude /review + 構造化抽出 + 表示）を丸ごとやり直す
+if [ "$choice" = "r" ]; then
+  echo "↻ レビューを再生成します..."
+  run_review || true
+  continue
+fi
+
 case "$choice" in
   a)
-    gh pr review "$NUMBER" -R "$REPO" --approve --body "LGTM 👍 (Reviewed by Claude Code)"
-    echo "✅ Approved!"
-    ;;
-  c)
-    echo "🤖 Extracting concerns as inline comments..."
-    OWNER="${REPO%/*}"
-    REPO_NAME="${REPO#*/}"
-    COMMIT_ID=$(gh pr view "$NUMBER" -R "$REPO" --json headRefOid -q '.headRefOid')
-    DIFF=$(gh pr diff "$NUMBER" -R "$REPO")
-
-    # diffをパースして各行に絶対行番号を付与（Claudeが行番号を計算する必要をなくす）
-    # +行とコンテキスト行（スペース始まり）の両方にアノテーションを付ける
-    # GitHub APIはdiff内のコンテキスト行にもコメントできるため
-    ANNOTATED_DIFF=$(echo "$DIFF" | awk '
-      /^diff --git/ { file="" }
-      /^\+\+\+ / { file=substr($0, 7); print; next }
-      /^--- / { print; next }
-      /^@@ / {
-        s = $0
-        sub(/^@@ -[0-9,]+ \+/, "", s)
-        sub(/,.*/, "", s)
-        newline = s + 0
-        print
-        next
-      }
-      file != "" && /^[-+ ]/ {
-        prefix = substr($0, 1, 1)
-        if (prefix == "-") {
-          print
-        } else if (prefix == "+") {
-          printf "[LINE %d] %s\n", newline, $0
-          newline++
-        } else {
-          printf "[LINE %d] %s\n", newline, $0
-          newline++
-        }
-        next
-      }
-      { print }
-    ')
-
-    COMMENTS_JSON=$(claude --dangerously-skip-permissions -p "以下はPRの annotated diff と事前レビュー結果です。レビュー結果に挙がっている懸念事項を、該当する行への inline review comment として JSON 配列で出力してください。
-
-出力形式（この形式のJSON配列のみ、余計なテキストなし、コードフェンスなし）:
-[{\"path\": \"src/foo.ts\", \"line\": 42, \"side\": \"RIGHT\", \"body\": \"懸念内容\"}]
-
-- path: 変更されたファイルのパス（+++ b/... のパス。先頭の b/ は除く）
-- line: [LINE N] タグに記載された番号をそのまま使うこと。自分で計算しないでください。
-- side: 常に \"RIGHT\"
-- body: 懸念事項の内容（日本語で簡潔に）
-- 懸念事項がなければ空配列 []
-
-重要: 各追加行(+)とコンテキスト行(スペース始まり)の先頭に [LINE N] タグが付いています。この N が変更後ファイルの絶対行番号です。必ずこの番号をそのまま使ってください。削除行(-)にはタグがありません。
-
---- ANNOTATED DIFF ---
-${ANNOTATED_DIFF}
-
---- REVIEW ---
-${REVIEW_RESULT}")
-
-    # 余計な装飾を除去
-    COMMENTS_JSON=$(echo "$COMMENTS_JSON" | sed -n '/^\[/,/^\]/p')
-
-    if [[ -z "$COMMENTS_JSON" || "$COMMENTS_JSON" == "[]" ]]; then
-      echo "ℹ️  懸念事項は抽出されませんでした。"
+    if gh pr review "$NUMBER" -R "$REPO" --approve --body "LGTM 👍 (Reviewed by Claude Code)"; then
+      echo "✅ Approved!"
       exit 0
     fi
+    echo "❌ approve に失敗しました(API 等)。もう一度 [a] を押してください。"
+    ;;
+  c)
+    # 表示に使った FINDINGS_JSON をそのまま inline comment 化する（表示＝投稿で行番号一致）。
+    # blocker / suggestion のみ投稿（note は投稿しない）。line が無い指摘はスキップ。
+    echo "🤖 findings から inline comment を作成します..."
+    OWNER="${REPO%/*}"
+    REPO_NAME="${REPO#*/}"
+    COMMENT_JSON=$(echo "$FINDINGS_JSON" | jq -c '
+      [.findings[]?
+        | select(.severity=="blocker" or .severity=="suggestion")
+        | select(.line != null and ((.path // "") != ""))
+        | {path, line, side: (.side // "RIGHT"), body}]' 2>/dev/null || echo "[]")
 
-    echo "$COMMENTS_JSON" | jq .
+    if [ -z "$COMMENT_JSON" ] || [ "$COMMENT_JSON" = "[]" ]; then
+      echo "ℹ️  投稿対象の指摘（blocker/suggestion で行が特定できるもの）がありません。"
+      continue
+    fi
+
+    COMMIT_ID=$(gh pr view "$NUMBER" -R "$REPO" --json headRefOid -q '.headRefOid') || { echo "❌ commit-id 取得に失敗(API)。もう一度 [c] を押してください。"; continue; }
+
+    echo "$COMMENT_JSON" | jq .
 
     # pending review を作成（event を指定しないと pending になる）
-    PAYLOAD=$(jq -n --arg commit "$COMMIT_ID" --argjson comments "$COMMENTS_JSON" \
+    PAYLOAD=$(jq -n --arg commit "$COMMIT_ID" --argjson comments "$COMMENT_JSON" \
       '{commit_id: $commit, comments: $comments}')
 
-    echo "$PAYLOAD" | gh api "repos/${OWNER}/${REPO_NAME}/pulls/${NUMBER}/reviews" \
-      --method POST --input - > /dev/null
+    if ! echo "$PAYLOAD" | gh api "repos/${OWNER}/${REPO_NAME}/pulls/${NUMBER}/reviews" \
+      --method POST --input - > /dev/null; then
+      echo "❌ コメント投稿に失敗しました(API 等)。もう一度 [c] を押してください。"
+      continue
+    fi
 
     echo "✅ Pending review created. Opening browser..."
     open "${URL}/files"
+    exit 0
     ;;
   d)
     exec claude --dangerously-skip-permissions \
@@ -269,4 +370,8 @@ ${REVIEW_RESULT}"
   q)
     exit 0
     ;;
+  *)
+    echo "不明な選択: '$choice'"
+    ;;
 esac
+done
