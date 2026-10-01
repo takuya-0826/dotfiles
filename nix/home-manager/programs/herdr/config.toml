@@ -4,6 +4,12 @@
 # 全既定値は `herdr --default-config` で出る。 変更後は `herdr server reload-config`
 # (または prefix+shift+r) で走行中のサーバーに反映できる。
 
+# 初回の通知セットアップ (onboarding) は出さない。 herdr は選択結果をこのファイルに
+# 書き戻そうとするが、 nix 管理の symlink (read-only) なので
+# "failed to save onboarding setting: Permission denied (os error 13)" になる (2026-10-01 実測)。
+# 書き戻しを要らなくするため、 ここで確定させておく。
+onboarding = false
+
 [theme]
 # wezterm 側で Everforest Dark (Gogh) を使っており、 herdr には everforest の
 # built-in が無い。 "terminal" はホストターミナルの ANSI パレットに従うので、
