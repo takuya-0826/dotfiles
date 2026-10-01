@@ -72,9 +72,8 @@ in
       # herdr: ターミナルマルチプレクサ (2026-10-01 に zellij から移行、 上流 2026-08-13 と同形)。
       # Homebrew formula の herdr (0.7.5) は削除し nixpkgs 版に一本化した。
       herdr
-      # zellij は移行期間中だけ残す (既存セッションの退避用)。 herdr で一通り回ることを
-      # 確認したら消す。 旧レイアウト/ラッパーは programs/zellij/_archived/ に退避済み。
-      zellij
+      # zellij は 2026-10-01 に herdr で一通り回ることを確認して外した。
+      # 旧レイアウト/ラッパー/config.kdl は programs/zellij/_archived/ に退避済み。
       # watch-video skill の依存。 yt-dlp で動画/字幕取得、 ffmpeg (ffprobe 同梱) で
       # フレーム抽出とメタデータ取得。 ローカル文字起こしの mlx-whisper は nixpkgs に
       # 無いので `uv tool install mlx-whisper` で別途入れる (YouTube は auto-sub で足りる)。
@@ -343,14 +342,7 @@ in
   #     herdr に宣言レイアウトが無い。必要になったら herdr-bootstrap 方式で作り直す
   # 旧 work.kdl / cockpit.kdl / claude-zellij も同じ場所にある。
 
-  # Zellij 本体設定 (旧 Mac から移植)。 zellij は初回起動時に config.kdl を自動生成
-  # するが、 それは既定値のダンプなので上書きしてよい。 差分は theme
-  # (catppuccin-mocha / ghostty と統一) / pane_frames false / default_layout compact
-  # / show_startup_tips false の 4 点。
-  # session_serialization true は 2026-08-13 に外した (復元ダンプは claude ではなく
-  # MCP サーバを掴むので信用できない。理由は config.kdl の当該箇所)。
-  # ※ 2026-10-01 herdr 移行後は退避用。zellij 本体を外すときに一緒に消す。
-  xdg.configFile."zellij/config.kdl".source = ./programs/zellij/config.kdl;
+  # zellij 本体設定 (config.kdl) は 2026-10-01 に退役。 programs/zellij/_archived/config.kdl。
 
   # Ghostty (常用ターミナル、 旧 Mac から移植)。 JetBrainsMono Nerd Font +
   # CJK をヒラギノ角ゴ ProN にマップ + Catppuccin Mocha + JIS キーボード向け

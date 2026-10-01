@@ -227,29 +227,10 @@
       command claude "$@"
     }
 
-    # zj-hub / dev-hub / zj-project は退役した。現在の zellij 環境は
-    # layouts/work.kdl (タブ = PJ、作業する画面) と layouts/cockpit.kdl
-    # (ペイン = PJ、--remote-control で俯瞰する指揮盤面) の 2 枚だけで、
-    # ランチャーは要らない (端末を開くと auto-start が work を開く)。
-    #
-    # ⚠️ 2026-08-11 にここへ「まるちゃんの work.kdl はタブ = PJ で、1 画面に複数 PJ を
-    # 並べたペインは 1 つも無い」と書いて dev-hub を退役させたが、これは誤りだった。
-    # 上流 EdV4H には cockpit.kdl があり、まさにペイン = PJ をやっている (本人の
-    # docs/terminal/zellij-layouts.md が「複数プロジェクトの Claude Code を同時に
-    # 表示し、全体を俯瞰する」と説明している)。彼は 2 枚を用途で使い分けていて、
-    # 8 分割とタブ = PJ は対立しない。詳細は layouts/work.kdl 冒頭。
-    #
-    # ここにあった知見は移設済み:
-    #   - 復元ダンプが MCP サーバを掴む件 → programs/zellij/config.kdl
-    #     (session_serialization を外した理由として記述)
-    #   - レイアウトの設計メモ → programs/zellij/layouts/work.kdl 冒頭
-    #   - 旧 dev-hub 本体 → programs/zellij/_archived/dev-hub.kdl
-    #
-    # ★ 唯一ここにしか無かった知見なので書き残す: zellij の中から
-    #   `zellij attach` を呼ぶと **入れ子**になる。キー入力は外側のセッションが
-    #   先に食うのでフルスクリーン (Alt+f) やペイン移動が効かなくなる
-    #   (ステータスバーが 2 本出ているのが入れ子のサイン)。内側から別セッションへ
-    #   移るときは `zellij action switch-session` でクライアントを載せ替える。
+    # zellij 時代のランチャー (zj-hub / dev-hub / zj-project / zj-plan) はすべて退役。
+    # 2026-10-01 に zellij 自体も herdr へ置き換えた。経緯と当時の知見 (入れ子セッション、
+    # 復元ダンプが MCP サーバを掴む件、8 分割とタブ = PJ の使い分け) は
+    # programs/zellij/_archived/ と docs/claude-code/_archived/zellij-integration.md に残してある。
 
     # コンテキスト固定ランチャー。 どこから打っても claude の着地先が一定になる。
     # サブシェル ( ) で cd するので、 終了後は元の cwd に戻る。
