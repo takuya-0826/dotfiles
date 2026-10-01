@@ -55,6 +55,9 @@
     ccd = "command claude --dangerously-skip-permissions";
     ccdr = "command claude --dangerously-skip-permissions --remote-control";
 
+    # Codex
+    cod = "command codex --dangerously-bypass-approvals-and-sandbox";
+
     # Claude ランチャー (旧 Mac から引き継ぎ)。 _claude_in は initContent 定義。
     # cd 先を固定するので、 今いる場所に関係なく同じプロジェクトで起動できる。
     pm = "_claude_in ~/Atrae";
