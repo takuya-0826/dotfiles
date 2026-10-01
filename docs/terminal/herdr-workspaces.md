@@ -39,16 +39,16 @@ session ─┬─ workspace "Work" ─┬─ tab "Alchemy" ─┬─ pane (claud
 
 ### work — メインの開発ワークスペース
 
-10タブ構成で、各プロジェクトに Claude Code を割り当て:
+6 タブ構成 (2026-10-01、松本の PJ 構成)。各プロジェクトに Claude Code を割り当て:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Alchemy │ English │ Widget │ Sort │ Menu │ Croupier │ ...    │
+│ Frank │ tiki-taka │ uSketch │ Forms │ brain │ dotfiles        │
 ├──────────────────────────────────────────────────────────────┤
 │  ┌────────────────────────────────────────────────┐         │
-│  │  claude --dangerously-skip-permissions -c      │  ← 入力済み・未実行
+│  │  claude -c                                     │  ← 入力済み・未実行
 │  ├────────────────────────────────────────────────┤         │
-│  │  nr dev                                        │  ← 同上（split）
+│  │  pnpm dev                                      │  ← 同上（split）
 │  └────────────────────────────────────────────────┘         │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -61,18 +61,17 @@ session ─┬─ workspace "Work" ─┬─ tab "Alchemy" ─┬─ pane (claud
 
 **タブ構成**:
 
-| タブ名 | プロジェクト | ペイン構成 |
-|-------|------------|----------|
-| Alchemy | alchemy | Claude + `nr dev` |
-| English | learn-english-app | Claude |
-| Widget | web-progressive | Claude |
-| Sort | wevox | Claude |
-| Menu | web-progressive | Neovim |
-| Croupier | croupier | Claude + `nr dev` |
-| Analytics | web-progressive | Claude |
-| dotfiles | dotfiles | Claude |
-| DesignSystem | atrae-ui | Claude + shell |
-| Logo | wevox-logo-generator | Claude |
+| タブ名 | プロジェクト | ペイン構成 | 位置づけ |
+|-------|------------|----------|---------|
+| Frank | Atrae/frank | Claude + `python -m frank.main` (:8080) | 確定 |
+| tiki-taka | LightSuccess | Claude | 確定 |
+| uSketch | Atrae/usketch | Claude + `pnpm dev` | 確定 |
+| Forms | wevox-mono-web/web-progressive | Claude + BFF `pnpm dev` (:3333) + `pnpm dev --filter forms` (:3017) | 2026-10 完了まで |
+| brain | brain | Claude | 常設 (生メモの中継地) |
+| dotfiles | dotfiles | Claude | 常設 |
+
+外したもの: Home (cockpit の scratch で代替) / ATS (新 ATS は wevox-hiring-sandbox へ移行中)。
+旧 zellij 版の 8 タブは `nix/home-manager/programs/zellij/_archived/layouts/work.kdl`。
 
 ### cockpit — 指揮ワークスペース
 
@@ -82,13 +81,13 @@ session ─┬─ workspace "Work" ─┬─ tab "Alchemy" ─┬─ pane (claud
 
 | タブ名 | プロジェクト | ペイン構成 |
 |-------|------------|----------|
-| wevox | wevox | Claude (`--remote-control`) + shell |
-| web-progressive | web-progressive | Claude + shell x2 |
-| rest-bff | wevox-rest-bff | Claude + shell |
-| front | wevox-front | Claude + shell + manifest shell |
-| review | Projects | `gh-review-watcher` + shell |
-| scratch | Projects | shell x2 |
-| dotfiles | dotfiles | Claude + shell |
+| Frank | Atrae/frank | Claude (`--remote-control`) + shell |
+| tiki-taka | LightSuccess | Claude (`--remote-control`) + shell |
+| uSketch | Atrae/usketch | Claude (`--remote-control`) + shell |
+| Forms | wevox-mono-web/web-progressive | Claude (`--remote-control`) + shell |
+| review | Atrae | `gh-review-watcher` + shell |
+| scratch | Atrae | shell x2 |
+| dotfiles | dotfiles | Claude (`--remote-control`) + shell |
 
 `--remote-control` 付きで起動するので、外部からプロンプトを送信できる。
 

@@ -94,57 +94,61 @@ right() {
   printf '%s' "$pane"
 }
 
+# 松本の PJ 構成 (2026-10-01、上流 EdV4H の alchemy/croupier/... を差し替え)。
+# 旧 work.kdl / cockpit.kdl は programs/zellij/_archived/layouts/ に残してある。
+# タブは herdr の永続サーバに残るので、ここは「初回の種」。足し引きは後から手で。
+#   確定 3 つ: Frank / tiki-taka / uSketch
+#   常設:      dotfiles (環境いじり) / brain (生メモの中継地)
+#   期間限定:  Forms (Survey→Forms 移行、2026-10 完了予定。終わったら外す)
+#   外した:    Home (cockpit の scratch で代替) / ATS (新 ATS は wevox-hiring-sandbox へ移行中)
 build_work() {
   workspace Work
   local p
+  # dev サーバ類は旧レイアウトと同じく下に split して打ち込むだけ (Enter で起動)。
 
-  p=$(tab Alchemy      "Projects/alchemy"                                  $CLAUDE -c)
-  below "$p" "Projects/alchemy" nr dev >/dev/null
+  p=$(tab Frank     "Atrae/frank"                            $CLAUDE -c)
+  below "$p" "Atrae/frank" "source .venv/bin/activate && python -m frank.main" >/dev/null   # :8080
 
-  tab English      "Projects/learn-english-app"                        $CLAUDE -c >/dev/null
-  tab Widget       "Projects/wevox/wevox-mono-web/web-progressive"     $CLAUDE    >/dev/null
-  tab Sort         "Projects/wevox"                                    $CLAUDE    >/dev/null
-  tab Menu         "Projects/wevox/wevox-mono-web/web-progressive"     nvim       >/dev/null
+  tab tiki-taka "LightSuccess"                            $CLAUDE -c >/dev/null
 
-  p=$(tab Croupier     "Projects/croupier"                                 $CLAUDE)
-  below "$p" "Projects/croupier" nr dev >/dev/null
+  p=$(tab uSketch   "Atrae/usketch"                          $CLAUDE -c)
+  below "$p" "Atrae/usketch" pnpm dev >/dev/null                                                # turbo
 
-  tab Analytics    "Projects/wevox/wevox-mono-web/web-progressive"     $CLAUDE    >/dev/null
-  tab dotfiles     "dotfiles"                                          $CLAUDE    >/dev/null
+  p=$(tab Forms     "Atrae/wevox-mono-web/web-progressive"  $CLAUDE -c)
+  below "$p" "Atrae/wevox-rest-bff/apps/wevox-bff"        pnpm dev >/dev/null                  # BFF :3333
+  below "$p" "Atrae/wevox-mono-web/web-progressive"       pnpm dev --filter forms >/dev/null   # forms :3017
 
-  p=$(tab DesignSystem "Projects/atrae-ui"                                 $CLAUDE)
-  below "$p" "Projects/atrae-ui" >/dev/null
-
-  tab Logo         "Projects/sandbox/wevox-logo-generator-handson"     $CLAUDE    >/dev/null
+  tab brain     "brain"                                   $CLAUDE -c >/dev/null
+  tab dotfiles  "dotfiles"                                $CLAUDE -c >/dev/null
 }
 
 build_cockpit() {
   workspace Cockpit
   local p
-  # Cockpit ran everything through claude's remote-control mode.
+  # 指揮盤面。旧 cockpit.kdl は 1 タブ 4x2 のスタックペインだったが、herdr に
+  # スタックペインが無いので「1 PJ = 1 タブ (claude --remote-control + 作業シェル)」に
+  # 展開し、一覧はサイドバーに任せる (上流と同じ判断)。
   local cc="$CLAUDE --remote-control -c"
 
-  p=$(tab wevox "Projects/wevox" $cc)
-  below "$p" "Projects/wevox" >/dev/null
+  p=$(tab Frank     "Atrae/frank"                            $cc)
+  below "$p" "Atrae/frank" >/dev/null
 
-  p=$(tab web-progressive "Projects/wevox/wevox-mono-web/web-progressive" $cc)
-  below "$p" "Projects/wevox/wevox-mono-web/web-progressive" >/dev/null
-  below "$p" "Projects/wevox/wevox" >/dev/null
+  p=$(tab tiki-taka "LightSuccess"                            $cc)
+  below "$p" "LightSuccess" >/dev/null
 
-  p=$(tab rest-bff "Projects/wevox/wevox-rest-bff" $cc)
-  below "$p" "Projects/wevox/wevox-rest-bff" >/dev/null
+  p=$(tab uSketch   "Atrae/usketch"                          $cc)
+  below "$p" "Atrae/usketch" >/dev/null
 
-  p=$(tab front "Projects/wevox/wevox-front" $cc)
-  below "$p" "Projects/wevox/wevox-front" >/dev/null
-  below "$p" "Projects/manifest" >/dev/null
+  p=$(tab Forms     "Atrae/wevox-mono-web/web-progressive"  $cc)
+  below "$p" "Atrae/wevox-mono-web/web-progressive" >/dev/null
 
-  p=$(tab review "Projects" gh-review-watcher)
-  below "$p" "Projects" >/dev/null
+  p=$(tab review    "Atrae"                                  gh-review-watcher)
+  below "$p" "Atrae" >/dev/null
 
-  p=$(tab scratch "Projects")
-  below "$p" "Projects" >/dev/null
+  p=$(tab scratch   "Atrae")
+  below "$p" "Atrae" >/dev/null
 
-  p=$(tab dotfiles "dotfiles" $cc)
+  p=$(tab dotfiles  "dotfiles"                               $cc)
   below "$p" "dotfiles" >/dev/null
 }
 
@@ -211,7 +215,9 @@ build_grid() {
   local n=$((cols * rows))
 
   # 直近アクティブな N セッションを .jsonl の mtime 順で拾う（このセッションは除外）。
-  local SELF="7990c3e2-fa2b-4903-ae64-eeafdf18ef89"
+  # 自分自身 (このスクリプトを打った claude セッション) は除外。上流は ID 直書きだったが
+  # 使い回せないので環境変数から取る (未設定なら除外なし)。
+  local SELF="${CLAUDE_SESSION_ID:-__none__}"
   # NOTE: カウンタで数える。set -u の bash 3.2 では空配列の ${#arr[@]} が
   # "unbound variable" になるため、${#SIDS[@]} は使わない。
   local -a SIDS=() CWDS=()
