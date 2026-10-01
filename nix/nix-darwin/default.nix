@@ -71,7 +71,8 @@
       # 旧 Mac では直ダウンロードで入れていたため brew leaves / brew list --cask
       # ベースの棚卸しから構造的に漏れていた 2 件 (2026-07-29 の環境差分照合で発見)。
       "typeless" # 音声入力。 旧 Mac で毎日使用
-      "cursor"
+      # cursor は 2026-10-01 に削除 (会社方針で利用禁止。代替は VS Code + Claude/Codex、
+      # .md は bat / nvim / Obsidian)。
       # Microsoft 365。 会社の Atrae Self-Service (Jamf) に無かったため brew 経由。
       # cask は Microsoft 公式インストーラなので、 会社アカウントでサインインすれば
       # ライセンスは通る。
