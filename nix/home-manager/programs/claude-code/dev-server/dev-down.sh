@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Stop a dev server started by `dev-up`: kill its process group, then remove
-# the herdr pane/tab it lives in.
+# the zellij tab/pane it lives in.
 #
-# The surface is always closed BY ID, taken from the .meta `dev-up` wrote —
-# herdr's `tab close` / `pane close` require an id, so there is no "close whatever
-# is focused" form to get wrong.
+# The surface is always closed BY ID (session + tab/pane id from the .meta
+# `dev-up` wrote) — never a bare `zellij action close-tab`, which closes whatever
+# tab happens to be focused.
 #
 # usage: dev-down <name>
 set -uo pipefail
@@ -23,9 +23,10 @@ grace_ticks=$(( ${DEV_DOWN_GRACE:-8} * 4 ))
 [ "$grace_ticks" -lt 1 ] && grace_ticks=1
 
 metaval() { grep -m1 "^$1=" "$2" 2>/dev/null | cut -d= -f2-; }
-kind=""; tabid=""; paneid=""
+kind=""; session=""; tabid=""; paneid=""
 if [ -f "$meta" ]; then
   kind=$(metaval kind "$meta")
+  session=$(metaval session "$meta")
   tabid=$(metaval tabid "$meta")
   paneid=$(metaval paneid "$meta")
 fi
@@ -49,23 +50,17 @@ if [ -f "$pidfile" ]; then
   fi
 fi
 
-# 2) remove the herdr surface.
-#
-# herdr has no `--close-on-exit`: the pane's shell outlives the command, so the
-# surface ALWAYS has to be closed explicitly here (under zellij the pane usually
-# disappeared on its own and this was just a fallback).
-case "$kind" in
-  tab)
-    [ -n "$tabid" ] && herdr tab close "$tabid" >/dev/null 2>&1 || true
-    ;;
-  # stack/float are zellij-era kinds that can still be sitting in an old .meta.
-  # The recorded id is then a zellij pane number, which herdr just rejects — the
-  # process kill above is what matters, and the stale surface is the old
-  # multiplexer's problem, not ours.
-  split|stack|float)
-    [ -n "$paneid" ] && herdr pane close "$paneid" >/dev/null 2>&1 || true
-    ;;
-esac
+# 2) remove the zellij surface, by id. A --split pane ran with --close-on-exit and
+# is normally gone already; a tab is kept on exit (to show the status) so it has
+# to be closed here. Metas written by the herdr-era dev-up have no session= line;
+# their ids mean nothing to zellij, so they are skipped (the kill above is what
+# matters).
+if [ -n "$session" ]; then
+  case "$kind" in
+    tab)   [ -n "$tabid" ]  && zj -s "$session" action close-tab-by-id "$tabid" >/dev/null 2>&1 || true ;;
+    split) [ -n "$paneid" ] && zj -s "$session" action close-pane --pane-id "$paneid" >/dev/null 2>&1 || true ;;
+  esac
+fi
 
 # Removing the meta also clears keep=1, so dev-supervise stops restarting it.
 rm -f "$meta" "$pidfile" "$statedir/$name.argv" "$statedir/$name.spec"

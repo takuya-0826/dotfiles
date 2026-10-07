@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# dev-ctl — sandbox-escape front-end for the herdr-touching dev-server commands.
+# dev-ctl — sandbox-escape front-end for the zellij-touching dev-server commands.
 #
-# Why: Claude Code's Bash sandbox blocks the herdr control socket (and `kill -0`
+# Why: Claude Code's Bash sandbox blocks the zellij control socket (and `kill -0`
 # on other pids), so `dev-up` / `dev-down` / a reliable `dev-list` do NOT work when
 # Claude runs them directly. But scripts under ~/.claude/scripts/ run OUTSIDE the
 # sandbox when invoked BY DIRECT PATH. So Claude drives dev servers through this:
@@ -12,12 +12,12 @@
 #     ~/.claude/scripts/dev-ctl down weboard
 #     ~/.claude/scripts/dev-ctl supervise
 #
-# From a real herdr shell you can still call dev-up/dev-down/dev-list directly.
+# From your own terminal you can still call dev-up/dev-down/dev-list directly.
 # (This file is installed by home-manager to ~/.claude/scripts/dev-ctl.)
 set -uo pipefail
 
 # mise shims first so `pnpm`/`node` resolve for whatever server we (re)start;
-# ~/.local/bin has the dev-* commands; nix-profile has herdr/jq.
+# ~/.local/bin has the dev-* commands and zj; nix-profile has zellij/jq.
 export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$HOME/.nix-profile/bin:$PATH"
 
 sub="${1:-}"
@@ -32,7 +32,7 @@ case "$sub" in
   ""|-h|--help|help)
     cat >&2 <<'USAGE'
 usage: dev-ctl <subcommand> [args...]
-  up [--keep] [--tab|--split] <name> -- <cmd...>   start a dev server (herdr)
+  up [--keep] [--tab|--split] <name> -- <cmd...>   start a dev server (zellij)
   down <name>                                      stop it
   logs <name> [lines]                              tail its output
   list                                             list servers (accurate state)

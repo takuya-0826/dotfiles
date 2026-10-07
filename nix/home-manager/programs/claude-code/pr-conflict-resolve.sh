@@ -154,37 +154,28 @@ shallow_clone() {
   echo "$target"
 }
 
-# 走っている herdr セッション名を取得。
-#
-# zellij 時代のような TMPDIR 剥がし (env -u TMPDIR) は不要: herdr の socket は
-# ~/.config/herdr/[sessions/<name>/]herdr.sock という固定パスなので、 launchd から
-# でも Claude Code のサンドボックスからでも同じサーバーに届く。
-# `herdr session list` は「name status directory socket」の表。 running の先頭を採る。
-herdr_session() {
-  local s
-  s=$(herdr session list 2>/dev/null | awk '$2=="running"{print $1; exit}')
-  [ -z "$s" ] && return 1
-  echo "$s"
-}
-
-# herdr タブを開いて Claude セッションを起動 (人間委譲用)
+# zellij タブを開いて Claude セッションを起動 (人間委譲用)
 # usage: open_human_tab <work_dir> <handoff_reason>
+#
+# launchd から走るので zellij の外にいる。タブはバックグラウンドセッション
+# "pr-conflicts" ($PR_CONFLICT_SESSION で変更可) に作り、作業中の画面を奪わない。
+# 見るときは `zellij attach pr-conflicts`。zellij の呼び出しは zj 経由 (launchd の
+# $TMPDIR では socket が見つからないため、zj が正規化する)。
 open_human_tab() {
   local work_dir="$1"
   local handoff_reason="$2"
   local TAB="Conflict: $REPO#$NUM"
+  local session="${PR_CONFLICT_SESSION:-pr-conflicts}"
 
-  local session
-  if ! session=$(herdr_session); then
-    log "  ERROR: no running herdr session, cannot open tab"
+  zj ensure "$session" >/dev/null 2>&1 || true
+  # 届かない理由を確定させてから進む。stderr は launchd で消えるので log() に残す。
+  local pf_err
+  if ! pf_err=$(zj preflight pr-conflict-resolve 2>&1); then
+    while IFS= read -r l; do log "  $l"; done <<< "$pf_err"
     log "  human handoff details: work_dir=$work_dir reason=$handoff_reason"
     return
   fi
-  log "  using herdr session: $session"
-  # 名前付きセッションのときだけ $HERDR_SESSION を立てる。 既定セッションは名前が
-  # "default" だが socket は sessions/ 配下ではなく ~/.config/herdr/herdr.sock に
-  # あり、 明示指定すると別の socket を見に行きかねないので触らない。
-  [ "$session" != "default" ] && export HERDR_SESSION="$session"
+  log "  using zellij session: $session"
 
   local handoff_prompt
   handoff_prompt=$(cat <<EOF
@@ -212,39 +203,27 @@ $handoff_reason
 EOF
 )
 
-  # 既存タブがあれば focus のみ
-  local existing
-  existing=$(herdr-tab-id "$TAB" 2>/dev/null || true)
-  if [ -n "$existing" ]; then
-    log "  herdr tab '$TAB' already exists, focusing"
-    herdr tab focus "$existing" 2>>"$LOG_FILE" || true
+  # 既存タブがあれば何もしない (セッションを横断して探す)
+  if zj find-tab "$TAB" >/dev/null 2>&1; then
+    log "  zellij tab '$TAB' already exists"
     return
   fi
 
-  # prompt は長くなりがちなので一時ファイルに書き出して、herdr には短いコマンドだけ送る
-  # (ペインのシェルに長文を打ち込むと途中で切れる/欠落することがある)
+  # prompt は長くなりがちなので一時ファイルに書き出して、コマンドラインには短く渡す
   local prompt_dir="/tmp/pr-conflict-check/prompts"
   mkdir -p "$prompt_dir"
   local prompt_file="$prompt_dir/${REPO//\//-}-${NUM}.prompt"
   printf '%s\n' "$handoff_prompt" > "$prompt_file"
   log "  prompt written to: $prompt_file"
 
-  # 新規タブ作成して claude 起動。 tab create は新しいタブの root pane まで返すので
-  # pane を引き直す必要はない。 --no-focus で作業中のタブを奪わない。
-  log "  opening new herdr tab: $TAB"
-  local created pane_id
-  created=$(herdr tab create --label "$TAB" --cwd "$work_dir" --no-focus 2>>"$LOG_FILE") || {
-    log "  ERROR: herdr tab create failed"
-    return
-  }
-  pane_id=$(printf '%s' "$created" | jq -r '.result.root_pane.pane_id // empty')
-  if [ -z "$pane_id" ]; then
-    log "  ERROR: no pane id in herdr response: $created"
-    return
-  fi
+  # 新規タブで claude を起動し、終わったらそのタブでシェルを続ける。
   # ccd = `command claude --dangerously-skip-permissions` (zsh alias, wrapper を bypass)
-  # `pane run` はペインのシェルに打ち込んで Enter まで送る。
-  herdr pane run "$pane_id" "ccd \"\$(cat $(printf '%q' "$prompt_file"))\"" 2>>"$LOG_FILE" || true
+  # なので対話 zsh (-i) で alias を読ませる。
+  log "  opening new zellij tab: $TAB"
+  local run
+  run="ccd \"\$(cat $(printf '%q' "$prompt_file"))\"; exec zsh -l"
+  zj -s "$session" action new-tab --name "$TAB" --cwd "$work_dir" -- zsh -ic "$run" \
+    >/dev/null 2>>"$LOG_FILE" || log "  ERROR: zellij new-tab failed"
 }
 
 # ---- ローカル準備 ----
@@ -489,20 +468,15 @@ if [ -n "$CACHED" ]; then
   # cache hit で HIGH 自動解決不可の場合、毎日タブを開き直すのを避けるため早期 exit。
   # ただしタブが「実は開かれていなかった」状態を救うため、タブの存在を確認してから skip する。
   if [ "$CAN" != "true" ] || [ "$CONF" != "HIGH" ]; then
-    EXISTING_TAB=""
-    SESSION=$(herdr_session 2>/dev/null || true)
-    if [ -n "$SESSION" ]; then
-      [ "$SESSION" != "default" ] && export HERDR_SESSION="$SESSION"
-      EXISTING_TAB=$(herdr-tab-id "Conflict: $REPO#$NUM" 2>/dev/null || true)
-    fi
+    EXISTING_TAB=$(zj find-tab "Conflict: $REPO#$NUM" 2>/dev/null || true)
     if [ -n "$EXISTING_TAB" ]; then
-      log "  → cached non-HIGH judge + herdr tab still open, skipping"
+      log "  → cached non-HIGH judge + zellij tab still open, skipping"
       git rebase --abort 2>/dev/null || true
       cleanup
       echo "SKIPPED_CACHED"
       exit 0
     fi
-    log "  → cached non-HIGH judge but herdr tab missing; re-open it"
+    log "  → cached non-HIGH judge but zellij tab missing; re-open it"
     git rebase --abort 2>/dev/null || true
     open_human_tab "$WORK" "判定 (cached): can_auto=$CAN confidence=$CONF reason=$REASON"
     echo "HUMAN_NEEDED"
@@ -621,7 +595,7 @@ EOF
 fi
 
 # ---- 3d. 人間委譲 ----
-log "  → handing off to human (herdr tab)"
+log "  → handing off to human (zellij tab)"
 git rebase --abort 2>/dev/null || true
 
 open_human_tab "$WORK" "判定: can_auto=$CAN confidence=$CONF reason=$REASON"

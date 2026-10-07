@@ -173,28 +173,18 @@ tmux select-pane -T "Developer"
 tmux send-keys "claude --dangerously-skip-permissions" ENTER
 ```
 
-### herdr で使う場合
+### Zellij で使う場合
 
-tmux の代わりに herdr を使う場合は、`herdr pane` サブコマンドに置き換える。
-ペインは番号ではなく ID (`w1:p3`) で指すので、分割順で番号がずれる問題が無い:
+tmux の代わりに Zellij を使う場合は、`zellij action` コマンドに置き換える:
 
 ```bash
-# ペイン一覧 (ID とラベル)
-herdr pane list | jq -r '.result.panes[] | "\(.pane_id)\t\(.label)"'
-
 # ペイン名の設定
-herdr pane rename "$HERDR_PANE_ID" "Architect"
+zellij action rename-pane "Architect"
 
-# コマンドの送信 (run は Enter まで送る / send-text は打ち込むだけ)
-herdr pane run w1:p3 "claude --dangerously-skip-permissions"
-herdr pane send-text w1:p3 "指示内容"
-
-# エージェントが手を止めるまで待つ
-herdr agent wait w1:p3 --until done
+# コマンドの送信
+zellij action write-chars "指示内容"
+zellij action write 10  # Enter キー
 ```
-
-`herdr agent wait` は tmux/zellij に相当機能が無い。ロール間の受け渡しを
-「出力をポーリングして判定する」ではなく、状態で待てる。
 
 ## Tips & 注意点
 

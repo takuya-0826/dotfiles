@@ -2,13 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(pnpm type-check)",
-      "Bash(pnpm type-check *)",
-      "Bash(herdr tab list)",
-      "Bash(herdr pane list)",
-      "Bash(herdr workspace list)",
-      "Bash(herdr worktree list)",
-      "Bash(herdr status)",
-      "Bash(herdr api schema *)"
+      "Bash(pnpm type-check *)"
     ]
   }
 }

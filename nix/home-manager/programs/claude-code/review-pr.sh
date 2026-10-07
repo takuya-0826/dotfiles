@@ -55,9 +55,45 @@ build_annotated_diff() {
   DIFF=$(gh pr diff "$NUMBER" -R "$REPO" 2>/dev/null || true)
   if [[ -z "${DIFF// }" ]]; then ANNOTATED_DIFF=""; return 0; fi
   ANNOTATED_DIFF=$(printf '%s\n' "$DIFF" | awk '
+    # git は非 ASCII を含むパスを C クォート形式で出す:
+    #   +++ "b/code/.../\350\250\255\345\256\232....md"
+    # これを素の UTF-8 に戻す。戻さないと path が壊れ、投稿時に GitHub が位置を
+    # 解決できず 422 ("Line could not be resolved") になる。
+    function unquote_path(s,   out, i, c, n, k) {
+      if (substr(s, 1, 1) != "\"") return s
+      s = substr(s, 2, length(s) - 2)
+      out = ""; i = 1
+      while (i <= length(s)) {
+        c = substr(s, i, 1)
+        if (c != "\\") { out = out c; i++; continue }
+        n = substr(s, i + 1, 1)
+        if (n ~ /^[0-7]$/) {
+          k = (substr(s, i+1, 1) + 0) * 64 + (substr(s, i+2, 1) + 0) * 8 + (substr(s, i+3, 1) + 0)
+          out = out sprintf("%c", k); i += 4
+        } else if (n == "n") { out = out "\n"; i += 2 }
+        else if (n == "t")   { out = out "\t"; i += 2 }
+        else                 { out = out n;    i += 2 }
+      }
+      return out
+    }
+    # ヘッダは正規化した (クォートを外した) 形で出力する。後段の print_hunk と
+    # 抽出プロンプトはどちらも "+++ b/<path>" の形を前提にしているため。
     /^diff --git/ { file="" }
-    /^\+\+\+ / { file=substr($0, 7); print; next }
-    /^--- / { print; next }
+    /^\+\+\+ / {
+      p = unquote_path(substr($0, 5))
+      if (p == "/dev/null") { file=""; print "+++ /dev/null"; next }
+      sub(/^b\//, "", p)
+      file = p
+      printf "+++ b/%s\n", p
+      next
+    }
+    /^--- / {
+      p = unquote_path(substr($0, 5))
+      if (p == "/dev/null") { print "--- /dev/null"; next }
+      sub(/^a\//, "", p)
+      printf "--- a/%s\n", p
+      next
+    }
     /^@@ / {
       s = $0
       sub(/^@@ -[0-9,]+ \+/, "", s)
@@ -198,8 +234,38 @@ REVIEW_RESULT=""
 FINDINGS_JSON='{"findings":[]}'
 run_review() {
   echo "🔍 レビュー生成中..."
-  # Step 1: claude -p でレビュー実行
-  REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "/review ${URL}" 2>&1 || true)
+  # Step 1: claude -p でレビュー実行。
+  # `/review <URL>` は使わない: そんなスラッシュコマンドは存在せず、code-review スキルに
+  # 流れて「カレントディレクトリの diff」がレビューされてしまう。レビュータブの cwd は
+  # 開いた時のフォーカス中ペインの cwd を継いで無関係な worktree になりうるため、実測で
+  # 「PR #11478 を頼んだのに atrae-ui の git diff main...HEAD がレビューされる」事故が出た。
+  # → 対象をプロンプト内で完結させ、cwd に一切依存しない形にする。
+  local REVIEW_PROMPT
+  REVIEW_PROMPT="次の GitHub PR をコードレビューしてください。
+
+対象は **この PR の diff だけ** です。ローカルの作業ツリー・カレントブランチ・他リポジトリは
+レビュー対象ではありません。cwd に git リポジトリがあっても無視してください。
+
+- Repo:   ${REPO}
+- PR:     #${NUMBER}
+- URL:    ${URL}
+- Title:  ${PR_TITLE}
+- Author: ${PR_AUTHOR}
+- Branch: ${PR_HEAD} → ${PR_BASE}
+- Diff:   +${PR_ADD} / -${PR_DEL} (${PR_FILES} files)
+- CI:     ${CI_LINE}
+
+追加の文脈が要る場合は gh を使ってこの PR / このリポジトリだけを参照してください
+(例: gh pr view ${NUMBER} -R ${REPO}, gh api repos/${REPO}/contents/<path>?ref=${PR_HEAD})。
+
+観点: 正しさ・退行・エラーハンドリング・既存実装との重複・i18n/アクセシビリティ・型の緩さ。
+指摘には必ず該当ファイルと行番号を添えてください。行番号は下の annotated diff の各行頭に
+付いている [LINE N] の N をそのまま使うこと (自分で数えない)。
+
+--- ANNOTATED DIFF ---
+${ANNOTATED_DIFF}"
+
+  REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "$REVIEW_PROMPT" 2>&1 || true)
   if [[ -z "${REVIEW_RESULT// }" ]]; then
     echo "⚠️  レビュー生成に失敗しました（claude が空応答）。[r] でやり直せます。"
     return 1
@@ -285,9 +351,10 @@ EOF
   fi
 fi
 
-# 分析完了後、このレビュータブにフォーカスを移動
-REVIEW_TAB_ID=$(herdr-tab-id "Review: ${REPO}#${NUMBER}" 2>/dev/null || true)
-[ -n "$REVIEW_TAB_ID" ] && herdr tab focus "$REVIEW_TAB_ID" >/dev/null 2>&1 || true
+# 分析完了後、このレビュータブにフォーカスを移動 (タブ id で。名前で探してセッションも特定する)
+if REVIEW_TAB=$(zj find-tab "Review: ${REPO}#${NUMBER}" 2>/dev/null); then
+  zj -s "${REVIEW_TAB%%$'\t'*}" action go-to-tab-by-id "${REVIEW_TAB##*$'\t'}" >/dev/null 2>&1 || true
+fi
 
 # 選択肢を提示（メニューはループ）。API 失敗時は abort せずメニューに戻る:
 #   - approve/comment が失敗したら「もう一度同じキー」で再実行できる（冪等な再送）。
@@ -338,6 +405,32 @@ case "$choice" in
       continue
     fi
 
+    # 投稿前に (path, line) が diff 上に実在するか ANNOTATED_DIFF で検証する。
+    # GitHub は解決できない行が1件でもあるとリクエスト全体を 422 ("Line could not be
+    # resolved") で落とすので、外れた指摘は落として残りだけ投稿する。
+    VALID_JSON=$(printf '%s\n' "$ANNOTATED_DIFF" | awk '
+      /^\+\+\+ / { f = substr($0, 7); next }
+      /^\[LINE / { if (f != "") { n = $2; sub(/\]/, "", n); print f "\t" n } }
+    ' | jq -R -s '
+      split("\n") | map(select(length > 0) | split("\t") | {key: (.[0] + ":" + .[1]), value: true}) | from_entries')
+
+    SPLIT_JSON=$(jq -n --argjson c "$COMMENT_JSON" --argjson v "$VALID_JSON" '
+      def key: .path + ":" + (.line | tostring);
+      { ok: [ $c[] | select($v[key] == true) | .line |= (tonumber? // .) ],
+        ng: [ $c[] | select($v[key] != true) ] }' 2>/dev/null || echo '{"ok":[],"ng":[]}')
+
+    NG_N=$(echo "$SPLIT_JSON" | jq '.ng | length')
+    if [ "$NG_N" -gt 0 ]; then
+      echo "⚠️  diff 上に解決できない行の指摘を ${NG_N} 件スキップしました:"
+      echo "$SPLIT_JSON" | jq -r '.ng[] | "   - \(.path):\(.line)  \(.body | .[0:60])"'
+    fi
+
+    COMMENT_JSON=$(echo "$SPLIT_JSON" | jq -c '.ok')
+    if [ "$COMMENT_JSON" = "[]" ]; then
+      echo "ℹ️  投稿できる指摘が残りませんでした（行番号が diff と一致していません）。"
+      continue
+    fi
+
     COMMIT_ID=$(gh pr view "$NUMBER" -R "$REPO" --json headRefOid -q '.headRefOid') || { echo "❌ commit-id 取得に失敗(API)。もう一度 [c] を押してください。"; continue; }
 
     echo "$COMMENT_JSON" | jq .
@@ -346,9 +439,17 @@ case "$choice" in
     PAYLOAD=$(jq -n --arg commit "$COMMIT_ID" --argjson comments "$COMMENT_JSON" \
       '{commit_id: $commit, comments: $comments}')
 
-    if ! echo "$PAYLOAD" | gh api "repos/${OWNER}/${REPO_NAME}/pulls/${NUMBER}/reviews" \
-      --method POST --input - > /dev/null; then
-      echo "❌ コメント投稿に失敗しました(API 等)。もう一度 [c] を押してください。"
+    # 失敗時は API の応答本文をそのまま出す (422 の原因はほぼ本文の errors[] にしか書かれていない)。
+    # set -e 下なので rc は || で受ける (素の代入だと失敗時にスクリプトごと落ちる)。
+    API_RC=0
+    API_OUT=$(echo "$PAYLOAD" | gh api "repos/${OWNER}/${REPO_NAME}/pulls/${NUMBER}/reviews" \
+      --method POST --input - 2>&1) || API_RC=$?
+    if [ "$API_RC" -ne 0 ]; then
+      echo "❌ コメント投稿に失敗しました。API 応答:"
+      echo "$API_OUT" | head -40
+      echo "--- 送信した payload ---"
+      echo "$PAYLOAD" | jq . | head -60
+      echo "もう一度 [c] を押せば再送できます。"
       continue
     fi
 

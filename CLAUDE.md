@@ -79,7 +79,7 @@ nix build .#darwinConfigurations.ATR-LAP-OSX-TAKUYA-MATSUMOTO.system
 
 ### Installed Development Tools
 - Version control: git, gh, lazygit
-- Terminal: wezterm, herdr (terminal multiplexer)
+- Terminal: wezterm, zellij (terminal multiplexer)
 - Editor: neovim
 - Search: ripgrep
 - Utilities: curl, jq, docker
@@ -135,35 +135,39 @@ When compacting, preserve the following:
 - WezTerm is installed via Homebrew's nightly cask, not Nix
 - The configuration includes both Nix packages and Homebrew casks for different types of applications
 
-### herdr (ターミナルマルチプレクサ)
+### zellij (ターミナルマルチプレクサ)
 
-zellij から移行済み。 スクリプトから触るときの要点だけ:
+2026-08 に herdr へ移行し、 2026-10 に zellij へ戻した (開発の主軸を Claude デスクトップアプリに
+移したため)。 herdr 期の改良 (ID 指定の後片付け、 自動化用の専用スペース、 preflight) は zellij 版に
+移植済み。 herdr に戻すときは `feat/back-to-zellij` の移行コミットを revert する。
 
-- **タブ/ペインの操作は必ず ID 指定。** `herdr tab close <tab_id>` / `herdr pane close <pane_id>` は
-  ID 必須なので、 zellij 時代の「裸の `close-tab` がフォーカス中のタブを巻き込む」事故は起きない。
-  自分のタブ/ペインは `$HERDR_TAB_ID` / `$HERDR_PANE_ID` で分かる。
-- **CLI の出力は socket API のエンベロープ付き JSON。** 配列は `.result.tabs[]` / `.result.panes[]` に
-  入っている (`.[]` ではない)。 エラー時は `{"error":{...}}` を出して exit 1。
-- **`tab create` は新タブの root pane まで返す** (`.result.root_pane.pane_id`)。 pane を引き直さなくてよい。
-- **コマンド付きでタブ/ペインを生やす形は無い。** `tab create` → `pane run <pane_id> "<cmd>"` の 2 段。
-  `pane run` はペインのシェルに打ち込んで Enter まで送るので、 引数は `printf %q` でクォートする。
-  Enter を送りたくない (旧 `start_suspended` 相当) なら `pane send-text`。
-- **タブ/ペインはコマンドが終了しても消えない** (`--close-on-exit` 相当が無い)。 後片付けは明示的に。
-- socket は `~/.config/herdr/[sessions/<name>/]herdr.sock` の固定パス。 `$TMPDIR` に依存しないので
-  **launchd から起動されるスクリプト** (gh-review-watcher / pr-conflict-check 等) は同じサーバーに届く。
-  **ただし Claude Code の Bash からは届かない**: herdr はサンドボックス例外から外れ、 socket 接続が
-  EPERM で塞がれた (2026-08-19 実測)。 Claude が herdr を触るときは `~/.claude/scripts/` 配下の
-  hatch 経由 (dev サーバーは `dev-ctl`) にする。 → サンドボックスの項を見よ。
+スクリプトから触るときの要点:
+
+- **zellij は必ず `zj` 経由で呼ぶ。** zellij の socket は `$TMPDIR/zellij-<uid>/` にあり、 launchd や
+  Claude Code の Bash は `$TMPDIR` が違うので素の `zellij` では "There is no active session!" になる。
+  `zj` が macOS のユーザー一時ディレクトリ (`getconf DARWIN_USER_TEMP_DIR`) に揃える。
+- **タブ/ペインの操作は必ず ID 指定。** 素の `zellij action close-tab` / `close-pane` はフォーカス中の
+  ものを閉じる事故を起こす。 `close-tab-by-id <id>` / `close-pane --pane-id <id>` を使う。
+  `new-tab` は新タブの id (数字) を、 `new-pane` は `terminal_<n>` を stdout に返す。
+- **自動化のタブはバックグラウンドセッションに作る** (herdr の workspace の代わり)。
+  `dev-servers` (dev-up) / `reviews` (zellij の外から開いたレビュー) / `pr-conflicts` (コンフリクト委譲)。
+  `zj ensure <name>` が無ければ作る。 見るときは `zellij attach <name>`。 クライアントを開いていなくても
+  中のコマンドは動き続ける。
+- `zellij action list-tabs --json` は `[{"tab_id":…,"name":…,…}]` の配列 (エンベロープ無し)。
+- コマンド付きのタブは `new-tab --name … --cwd … -- <cmd>`。 `--close-on-exit` で終了時に閉じる。
+- **Claude Code の Bash からは socket が塞がれている。** Claude が zellij を触るときは `~/.claude/scripts/`
+  配下の hatch 経由 (dev サーバーは `dev-ctl`) にする。 → サンドボックスの項を見よ。
 
 専用ヘルパー (使えるなら必ずこっちを優先):
 
-- `herdr-tab-id <label>` → label 一致のタブ ID を引く (無ければ空 + exit 1)
+- `zj [-s SESSION] action …` / `zj find-tab <name>` (全セッション横断で `<session>\t<tab_id>`) /
+  `zj ensure <SESSION>` / `zj preflight [caller]` (届かない理由を出して exit 69)
 - `close-conflict-tab <repo> <num>` → `Conflict: <repo>#<num>` タブを閉じる (pr-conflict-check 用)
 - `close-merged-review-tab <num> <repo>` → `Review: <repo>#<num>` タブを閉じる (gh-review-watcher 用)
 - `open-review-tab <url> <num> <repo>` → `Review: <repo>#<num>` タブを開いて review-pr を走らせる
-- `herdr-bootstrap <work|cockpit>` → 旧 zellij KDL レイアウト相当の workspace を組み直す
+- レイアウト: `zellij --layout work` / `zellij --layout cockpit` (`nix/home-manager/programs/zellij/layouts/`)
 
-参考実装: `nix/home-manager/programs/herdr/`, `nix/home-manager/programs/claude-code/close-conflict-tab.sh`
+参考実装: `nix/home-manager/programs/zellij/zj.sh`, `nix/home-manager/programs/claude-code/close-conflict-tab.sh`
 
 ## サンドボックス (組織ポリシー / Claude Code の Bash)
 
@@ -178,24 +182,24 @@ zellij から移行済み。 スクリプトから触るときの要点だけ:
 - **例外 (サンドボックス外で走る)**: **行頭が** `git` / `gh` / `gcloud` / `bq` / `crit` 等の
   許可コマンド、または `~/.claude/scripts/` 配下のスクリプトを**パス直接指定**で実行したとき。
   判定はコマンド文字列のパターン一致。
-  (**`herdr` は以前は例外だったが 2026-08-19 時点で外れている** — bare `herdr …` は socket EPERM。
-  最新の正はセッション冒頭の `<sandbox-note>`。 例外リストは時期で変わるので herdr が再び入る可能性もある。)
+  (zellij / herdr のようなマルチプレクサは例外に入っていない — socket が EPERM になる。
+  最新の正はセッション冒頭の `<sandbox-note>`。)
 - **`bash script.sh` で包む・`&&`連結・パイプ・for/while に
   入れると例外が外れてサンドボックス内に落ちる**ので、許可コマンドは行頭の単発で打つ
   (作業ディレクトリは `cd &&` でなく Bash ツールの実行ディレクトリ指定で合わせる)。
-- **herdr の socket は Claude の Bash から塞がれている** → 素の `herdr` / `dev-up` / `dev-down` /
-  `herdr-tab-id` 等は EPERM で失敗する (`dev-up` は preflight の `herdr tab list` で exit 69)。
+- **zellij の socket は Claude の Bash から塞がれている** → 素の `zellij` / `zj` / `dev-up` / `dev-down` 等は
+  失敗する (`dev-up` は `zj preflight` で exit 69)。
   **dev サーバーは `~/.claude/scripts/dev-ctl {up|down|logs|list}` 経由で叩く** (scripts 例外で
   サンドボックス外＝socket に届く。 実測で up→down 成功)。 `dev-list` は socket 不使用だが `kill -0` が
   EPERM られ生きてるサーバも "dead" と誤表示するので、 状態確認も `dev-ctl list` を使う。
-  (launchd から起動される herdr スクリプト群はサンドボックス外なので従来どおり動く。)
+  (launchd から起動される zellij スクリプト群はサンドボックス外なので従来どおり動く。)
 
 ### localhost サーバと話す
 `~/.claude/scripts/lo-fetch <port> [path] [method]` を使う (127.0.0.1 固定の正規中継)。
 自分でサーバを bind したり直接 localhost に curl しない。サーバは人間がターミナルで起動する。
 
 ### git worktree での作業
-- **作成・一覧は可** (`git worktree` は例外なので使える。 `herdr worktree` は socket 経由なので
+- **作成・一覧は可** (`git worktree` は例外なので使える。 マルチプレクサの worktree 機能は socket 経由なので
   Claude の Bash からは今は塞がれている)。
 - ただし**書込許可ルートは Bash ツールの作業ディレクトリに固定**され、コマンド内 `cd` では移らない。
   → **worktree の中で type-check/lint/build すると EPERM で死ぬ** (書込ルート外だから)。
@@ -292,15 +296,9 @@ if [ -d ~/Projects/poke-mate ]; then
   ln -sfn ~/Projects/poke-mate/skills/review-party ~/.claude/skills/poke-mate-review-party
 fi
 
-# 8. herdr: Claude Code 連携を入れる (~/.claude/settings.json に hook を書き込む。
-#    nix 管理外なので新 PC で 1 回だけ手動実行が要る)
-herdr integration install claude
-herdr integration status
-
-# 9. herdr のワークスペースを組み直す (旧 zellij の work.kdl / cockpit.kdl 相当)
-#    herdr を起動してから、 別ペイン or 起動後のシェルで:
-herdr-bootstrap work
-# herdr-bootstrap cockpit   # 必要なら
+# 8. zellij: 作業用レイアウトで起動 (自動化用の dev-servers / reviews / pr-conflicts
+#    セッションは必要になったときに自動で作られる)
+zellij --layout work
 ```
 
 ### 引き継がないもの

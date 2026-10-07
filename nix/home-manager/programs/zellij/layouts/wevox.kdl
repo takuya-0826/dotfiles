@@ -1,0 +1,16 @@
+layout {
+    tab name="Wevox E2E Dev" focus=true {
+        pane split_direction="horizontal" {
+            pane split_direction="vertical" {
+                pane name="wevox" cwd="/Users/takuyamatsumoto/Atrae/wevox" size="50%"
+                pane name="web-progressive" cwd="/Users/takuyamatsumoto/Atrae/wevox-mono-web/web-progressive" size="25%"
+                pane name="web-progressive" cwd="/Users/takuyamatsumoto/Atrae/wevox-mono-web/web-progressive" size="25%"
+            }
+            pane split_direction="vertical" {
+                pane name="wevox-rest-bff" cwd="/Users/takuyamatsumoto/Atrae/wevox-rest-bff" size="50%"
+                pane name="wevox-front" cwd="/Users/takuyamatsumoto/Atrae/wevox-front" size="25%"
+                pane name="wevox-front" cwd="/Users/takuyamatsumoto/Atrae/wevox-front" size="25%"
+            }
+        }
+    }
+}

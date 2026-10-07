@@ -1,7 +1,7 @@
 // work.kdl — メインの開発レイアウト (タブ = プロジェクト)
 //   起動: zellij --layout work
 //
-// ┌─ Home ─ Frank ─ tiki-taka ─ Forms ─ uSketch ─ ATS ─ brain ─ dotfiles ─┐
+// ┌─ Frank ─ tiki-taka ─ Forms ─ uSketch ─ brain ─ dotfiles ─┐
 // │                                                                       │
 // │  ┌─────────────────────────────────────────────────┐                  │
 // │  │ claude-zellij "<TabName>" ... -c                │ ← expanded       │
@@ -9,6 +9,18 @@
 // │  │ dev server (あれば)                             │ ← stacked        │
 // │  └─────────────────────────────────────────────────┘                  │
 // └───────────────────────────────────────────────────────────────────────┘
+//
+// ============================================================================
+// 2026-10-07 追記: herdr → zellij 復帰 (上流 EdV4H 2026-10-05 に追従)
+// ============================================================================
+//
+//   _archived/layouts/work.kdl を戻し、herdr 期 (2026-10-01) に決めた PJ 構成に揃えた:
+//     確定 3 つ: Frank / tiki-taka / uSketch
+//     常設:      dotfiles / brain
+//     期間限定:  Forms (Survey→Forms 移行、2026-10 完了予定。終わったら外す)
+//     外した:    Home (cockpit の scratch で代替) / ATS (wevox-hiring-sandbox へ移行中)
+//   上流と同じく claude から --dangerously-skip-permissions を外した。
+//   以下の設計メモは 2026-08-13 時点のもの (8 タブ前提の記述は当時のまま)。
 //
 // ============================================================================
 // 設計メモ (2026-08-13)
@@ -83,17 +95,11 @@ layout {
         children
     }
 
-    tab name="Home" focus=true hide_floating_panes=true {
-        pane command="claude-zellij" {
-            args "Home" "--dangerously-skip-permissions" "-c"
-            start_suspended true
-        }
-    }
 
-    tab name="Frank" hide_floating_panes=true {
+    tab name="Frank" focus=true hide_floating_panes=true {
         pane stacked=true {
             pane command="claude-zellij" cwd="Atrae/frank" expanded=true {
-                args "Frank" "--dangerously-skip-permissions" "-c"
+                args "Frank" "-c"
                 start_suspended true
             }
             pane name="frank.main :8080" command="bash" cwd="Atrae/frank" {
@@ -105,7 +111,7 @@ layout {
 
     tab name="tiki-taka" hide_floating_panes=true {
         pane command="claude-zellij" cwd="LightSuccess" {
-            args "tiki-taka" "--dangerously-skip-permissions" "-c"
+            args "tiki-taka" "-c"
             start_suspended true
         }
     }
@@ -113,7 +119,7 @@ layout {
     tab name="Forms" hide_floating_panes=true {
         pane stacked=true {
             pane command="claude-zellij" cwd="Atrae/wevox-mono-web/web-progressive" expanded=true {
-                args "Forms" "--dangerously-skip-permissions" "-c"
+                args "Forms" "-c"
                 start_suspended true
             }
             pane name="BFF :3333" command="pnpm" cwd="Atrae/wevox-rest-bff/apps/wevox-bff" {
@@ -130,7 +136,7 @@ layout {
     tab name="uSketch" hide_floating_panes=true {
         pane stacked=true {
             pane command="claude-zellij" cwd="Atrae/usketch" expanded=true {
-                args "uSketch" "--dangerously-skip-permissions" "-c"
+                args "uSketch" "-c"
                 start_suspended true
             }
             pane name="dev (turbo)" command="pnpm" cwd="Atrae/usketch" {
@@ -140,33 +146,17 @@ layout {
         }
     }
 
-    tab name="ATS" hide_floating_panes=true {
-        pane stacked=true {
-            pane command="claude-zellij" cwd="Atrae/test_wevox-ats" expanded=true {
-                args "ATS" "--dangerously-skip-permissions" "-c"
-                start_suspended true
-            }
-            pane name="db :5432" command="bash" cwd="Atrae/test_wevox-ats" {
-                args "-c" "docker compose up db 2>/dev/null || docker-compose up db"
-                start_suspended true
-            }
-            pane name="dev :3000" command="bun" cwd="Atrae/test_wevox-ats" {
-                args "run" "dev"
-                start_suspended true
-            }
-        }
-    }
 
     tab name="brain" hide_floating_panes=true {
         pane command="claude-zellij" cwd="brain" {
-            args "brain" "--dangerously-skip-permissions" "-c"
+            args "brain" "-c"
             start_suspended true
         }
     }
 
     tab name="dotfiles" hide_floating_panes=true {
         pane command="claude-zellij" cwd="dotfiles" {
-            args "dotfiles" "--dangerously-skip-permissions" "-c"
+            args "dotfiles" "-c"
             start_suspended true
         }
     }

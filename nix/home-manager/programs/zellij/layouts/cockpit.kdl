@@ -76,28 +76,28 @@ layout {
             pane split_direction="vertical" size="50%" {
                 pane stacked=true size="25%" {
                     pane name="Frank" command="claude" cwd="Atrae/frank" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "Frank" "-c"
+                        args "--remote-control" "Frank" "-c"
                         start_suspended true
                     }
                     pane cwd="Atrae/frank"
                 }
                 pane stacked=true size="25%" {
                     pane name="tiki-taka" command="claude" cwd="LightSuccess" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "tiki-taka" "-c"
+                        args "--remote-control" "tiki-taka" "-c"
                         start_suspended true
                     }
                     pane cwd="LightSuccess"
                 }
                 pane stacked=true size="25%" {
                     pane name="Forms" command="claude" cwd="Atrae/wevox-mono-web/web-progressive" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "Forms" "-c"
+                        args "--remote-control" "Forms" "-c"
                         start_suspended true
                     }
                     pane cwd="Atrae/wevox-mono-web/web-progressive"
                 }
                 pane stacked=true size="25%" {
                     pane name="uSketch" command="claude" cwd="Atrae/usketch" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "uSketch" "-c"
+                        args "--remote-control" "uSketch" "-c"
                         start_suspended true
                     }
                     pane cwd="Atrae/usketch"
@@ -116,7 +116,7 @@ layout {
                 pane name="free" size="25%" cwd="Atrae"
                 pane stacked=true size="25%" {
                     pane name="dotfiles" command="claude" cwd="dotfiles" expanded=true {
-                        args "--dangerously-skip-permissions" "--remote-control" "dotfiles" "-c"
+                        args "--remote-control" "dotfiles" "-c"
                         start_suspended true
                     }
                     pane cwd="dotfiles"

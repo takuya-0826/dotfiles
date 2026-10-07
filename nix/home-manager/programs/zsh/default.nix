@@ -64,8 +64,8 @@
     frank = "_claude_in ~/Atrae/frank";
     gordon = "_claude_in ~/Atrae/frank/apps/gordon";
 
-    # ワークスペースは herdr の永続サーバが保持する。組み直すときだけ
-    # `herdr-bootstrap work` / `herdr-bootstrap cockpit` (docs/terminal/herdr-workspaces.md)。
+    # 作業レイアウトは `zellij --layout work` / `zellij --layout cockpit` を手で開く
+    # (programs/zellij/layouts/)。 会話の継続は claude の -c が担う。
 
     # Neovim
     v = "nvim";
@@ -121,23 +121,22 @@
     # 本物の子セッションは claude が直接 spawn するので .zshrc を通らず影響しない。
     unset CLAUDE_CODE_CHILD_SESSION
 
-    # Auto-start herdr (2026-10-01、zellij から移行。上流 EdV4H 2026-08-13 と同形)
+    # Auto-start Zellij
     #
-    # $HERDR_ENV は herdr が管理するペインの中でだけ "1" になるので、これで
-    # ネスト起動を防ぐ (herdr 側も experimental.allow_nested=false で二重に守る)。
-    # exec せず条件分岐で呼ぶのは、herdr から detach (prefix+q) したときに
-    # 素の zsh に戻れるようにするため。
+    # $ZELLIJ は zellij のペインの中でだけ立つのでネスト起動しない。 対話シェルに限るのは、
+    # Claude Code (デスクトップアプリ含む) の Bash など非対話シェルで起動させないため。
+    # Claude デスクトップアプリの Terminal パネルは対話シェルなのでこの条件をすり抜ける。
+    # Claude がそこへコマンドを打ち込み出力を読むので、 マルチプレクサが挟まると壊れる。
+    # パネルのシェルには TERM_PROGRAM=claude-desktop が立つので、 それで除外する。
     #
-    # 上流に無い条件を 2 つ足している (zellij 時代の 2026-08-03 事故の再発防止):
-    #   -t 1          … 人間の端末に繋がっているときだけ。ツールが裏で起動する
+    # 上流に無い条件を 2 つ足している (2026-08-03 のセッション 185 個増殖事故の再発防止):
+    #   -t 1          … 人間の端末に繋がっているときだけ。 ツールが裏で起動する
     #                   「.zshrc を読む対話シェル」から多重起動させない。
     #   -z $CLAUDECODE … Claude Code の中から開いたシェルでも起動しない。
-    # 当時の経緯 (185 セッション増殖、tty 無しゴースト 88%) は
-    # docs/claude-code/_archived/zellij-integration.md と git log を参照。
-    # herdr はサーバ 1 本に全 workspace が載る設計なのでセッションは増殖しないが、
-    # 条件は無害なので残す。
-    if [[ -o interactive && -t 1 && -z "$HERDR_ENV" && -z "$VSCODE_INJECTION" && -z "$CLAUDECODE" ]]; then
-      herdr
+    # 当時の経緯 (tty 無しゴースト 88%) は docs/claude-code/_archived/zellij-integration.md。
+    if [[ -z "$ZELLIJ" && -z "$VSCODE_INJECTION" && -o interactive && -t 1 \
+          && -z "$CLAUDECODE" && "$TERM_PROGRAM" != claude-desktop ]]; then
+      eval "$(zellij setup --generate-auto-start zsh)"
     fi
 
     # Enable vi mode
@@ -227,10 +226,10 @@
       command claude "$@"
     }
 
-    # zellij 時代のランチャー (zj-hub / dev-hub / zj-project / zj-plan) はすべて退役。
-    # 2026-10-01 に zellij 自体も herdr へ置き換えた。経緯と当時の知見 (入れ子セッション、
-    # 復元ダンプが MCP サーバを掴む件、8 分割とタブ = PJ の使い分け) は
-    # programs/zellij/_archived/ と docs/claude-code/_archived/zellij-integration.md に残してある。
+    # 旧ランチャー (zj-hub / dev-hub / zj-project / zj-plan) はすべて退役。 2026-10-01 に
+    # herdr へ移り、 2026-10-07 に上流に合わせて zellij へ戻した (ランチャーは戻していない)。
+    # 当時の知見 (入れ子セッション、 復元ダンプが MCP サーバを掴む件、 8 分割とタブ = PJ の
+    # 使い分け) は programs/zellij/_archived/ と docs/claude-code/_archived/zellij-integration.md。
 
     # コンテキスト固定ランチャー。 どこから打っても claude の着地先が一定になる。
     # サブシェル ( ) で cd するので、 終了後は元の cwd に戻る。

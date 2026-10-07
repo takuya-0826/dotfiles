@@ -2,9 +2,9 @@
 # そのディレクトリの直近セッションを session-id 明示で resume する。
 #
 # 使い方: claude-resume-latest [dir] [<claude への追加引数>]
-#   dir を省略すると $PWD。herdr のペインに打ち込んで使う想定。
-#   旧 `--tab <name>` (zellij のタブ名 🤖/✅ hook 用登録) は 2026-10-01 の herdr 移行で
-#   廃止した。エージェント状態は herdr がネイティブに持つ (herdr integration install claude)。
+#   dir を省略すると $PWD。zellij のペインに打ち込んで使う想定。
+#   旧 `--tab <name>` (タブ名 🤖/✅ hook 用登録) は 2026-10-01 の herdr 移行で廃止した。
+#   タブ名の切り替えが要るときは claude-zellij で起動する (work.kdl はそちらを使う)。
 #
 # なぜ `claude --continue` を使わないか (2026-08-03):
 #   --continue は "current directory の最新会話" を継続するが、11MB / 5067 行の

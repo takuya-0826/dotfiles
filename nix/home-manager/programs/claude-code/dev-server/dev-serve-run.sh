@@ -1,30 +1,27 @@
 #!/usr/bin/env bash
-# Internal wrapper launched *inside* a herdr pane/tab by `dev-up`.
+# Internal wrapper launched *inside* a zellij tab/pane by `dev-up`.
 #
 # Why it exists:
 #  - It records this shell's PID as the process-group leader so `dev-down` can
 #    stop the whole tree (pnpm -> node -> vite ...) with `kill -TERM -<pgid>`.
 #    Job control is off in scripts, so every child stays in this pgid == $$.
 #  - It tees output to a logfile so `dev-logs` (and Claude, headless) can read
-#    the server's output without stealing the herdr pane.
+#    the server's output without stealing the zellij pane.
 #
 # argv: <name> [statedir]
 #
 # Everything else — the command, its cwd, and the caller's PATH — is read from
 # the state dir, NOT from the command line.
 #
-# Why: herdr has no `new-pane -- cmd`; `dev-up` starts this by TYPING a command
-# into the pane's shell (`herdr pane run`). Long lines get truncated on the way
-# in — a full forwarded $PATH pushed the line past ~1KB and it arrived cut in
-# half, so nothing ran and the log stayed empty. Keeping the typed line down to
-# `dev-serve-run <name> <statedir>` makes that impossible regardless of how long
-# the command or the caller's PATH is.
+# Why: the state dir is the single source of truth that dev-supervise also uses to
+# respawn the exact same command. (Under herdr the command also had to be TYPED into
+# the pane, where long lines got truncated; zellij takes argv directly, but keeping
+# the command line short costs nothing.)
 #
-# The caller's PATH is still forwarded (via the spec file) because this runs in a
-# shell spawned by the herdr server, not by the caller. herdr does start panes as
-# login shells (so mise / Homebrew / corepack tools are normally on PATH anyway),
-# but that depends on `terminal.shell_mode`, and under zellij a missing PATH meant
-# "command not found" (exit 127). Forwarding keeps this independent of the setting.
+# The caller's PATH is forwarded (via the spec file) because this runs in a shell
+# spawned by the zellij server, not by the caller. A pane started from launchd or
+# a background session does not get the user's mise/Homebrew PATH, and that used to
+# end in "command not found" (exit 127).
 set -u
 
 name="${1:?dev-serve-run: missing name}"
@@ -81,12 +78,10 @@ exec > >(trap '' TERM; tee -a "$log") 2>&1
 #
 # Why: `dev-down` stops a server with `kill -TERM -<pgid>`, which hits this shell
 # too. Running the command in the foreground, bash dies on that TERM immediately,
-# and under zellij the pane then tore down and took the still-shutting-down server
+# and the zellij pane then tears down and takes the still-shutting-down server
 # with it — measured gone within 200ms, long before any SIGKILL, so graceful
 # teardown (flushing logs, closing pools, writing a shutdown record) never got to
-# finish. herdr panes outlive their command, so that particular teardown race is
-# gone, but the wrapper still has to survive the group kill to keep waiting on the
-# child (and to report its real exit status).
+# finish.
 #
 # So this shell survives the signal and waits for the child instead. It does NOT
 # forward another TERM: the child already received its own from the group kill,

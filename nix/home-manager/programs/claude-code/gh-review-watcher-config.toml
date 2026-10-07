@@ -19,7 +19,8 @@ command = """@notifyDesktop@ \
   -sound default"""
 
 # 新規PR検出時: yoloラベルがなければ新しいタブでClaude Codeにレビューさせる
-# (open-review-tab が herdr タブを --no-focus で開いて review-pr を走らせる)
+# (open-review-tab が zellij タブを開いて review-pr を走らせる。zellij の中から呼ばれたら
+#  同じセッションに開いてフォーカスを戻し、外からならバックグラウンドの "reviews" セッションに開く)
 [[on_new_pr]]
 name = "review-tab"
 command = """echo '{labels}' | grep -q yolo || open-review-tab '{url}' '{number}' '{repo}'"""

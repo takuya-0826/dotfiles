@@ -5,9 +5,8 @@ set -euo pipefail
 # usage: close-conflict-tab <repo> <num>
 # 例: close-conflict-tab Atrae/wevox-mono-web 9664
 #
-# herdr の `tab close` は tab_id 必須なので、 旧 zellij の「裸の close-tab が
-# フォーカス中のタブを巻き込む」事故は構造的に起きない。 label から id を引いて
-# 閉じるだけ。 該当タブが無ければ何もせず exit 0。
+# zellij action close-tab はフォーカスのタブを閉じてしまうため、必ずセッションを横断して
+# 名前でタブを探し、tab_id 指定で閉じる。該当タブが無ければ何もせず exit 0。
 
 REPO="${1:-}"
 NUM="${2:-}"
@@ -19,12 +18,17 @@ fi
 
 TAB_NAME="Conflict: ${REPO}#${NUM}"
 
-TAB_ID=$(herdr-tab-id "$TAB_NAME" || true)
+# find-tab は「届かない」も「無い」も exit 1 で返すので、preflight しないと
+# zellij 断絶時に "tab not found" と言って exit 0 してしまう。
+zj preflight close-conflict-tab || exit $?
 
-if [ -z "$TAB_ID" ]; then
+FOUND=$(zj find-tab "$TAB_NAME" || true)
+if [ -z "$FOUND" ]; then
   echo "tab not found: $TAB_NAME"
   exit 0
 fi
 
-herdr tab close "$TAB_ID"
-echo "closed: $TAB_NAME (id=$TAB_ID)"
+SESSION="${FOUND%%$'\t'*}"
+TAB_ID="${FOUND##*$'\t'}"
+zj -s "$SESSION" action close-tab-by-id "$TAB_ID"
+echo "closed: $TAB_NAME (session=$SESSION tab=$TAB_ID)"

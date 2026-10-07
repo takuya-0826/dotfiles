@@ -63,17 +63,14 @@ in
       bat
       fd
       ffmpeg
+      fontforge
       direnv
       uv
       awscli2
       bruno
       mysql84
       lazysql
-      # herdr: ターミナルマルチプレクサ (2026-10-01 に zellij から移行、 上流 2026-08-13 と同形)。
-      # Homebrew formula の herdr (0.7.5) は削除し nixpkgs 版に一本化した。
-      herdr
-      # zellij は 2026-10-01 に herdr で一通り回ることを確認して外した。
-      # 旧レイアウト/ラッパー/config.kdl は programs/zellij/_archived/ に退避済み。
+      zellij
       # watch-video skill の依存。 yt-dlp で動画/字幕取得、 ffmpeg (ffprobe 同梱) で
       # フレーム抽出とメタデータ取得。 ローカル文字起こしの mlx-whisper は nixpkgs に
       # 無いので `uv tool install mlx-whisper` で別途入れる (YouTube は auto-sub で足りる)。
@@ -88,8 +85,16 @@ in
       notify-desktop
     ];
 
+    # ここに置いてよいのは「このマシンで常に真である値」だけ。
+    # プロジェクトごとに変わりうる名前の変数を置くと、プロジェクト側の .env を
+    # 黙って上書きする (Node の --env-file は既存の環境変数を優先するため、
+    # .env の値がエラーも警告も無く無視される)。
+    # 実例: GOOGLE_CLOUD_PROJECT をここに置いていたため wevox-ai-agent の
+    # .env (wevox-data-science) が効かず、Vertex AI が 403 を返し続けた。
+    # 「権限が無い」という顔をして出るので切り分けが極めて困難だった。
+    # GCP プロジェクトは使うときにコマンド前置きで渡すこと:
+    #   GOOGLE_CLOUD_PROJECT=<id> <command>
     sessionVariables = {
-      GOOGLE_CLOUD_PROJECT = "atrae-engineer-gu7335mbf";
       GOENV_ROOT = "$HOME/.goenv";
       CLAUDE_AUTOCOMPACT_PCT_OVERRIDE = "65";
     };
@@ -197,11 +202,24 @@ in
     executable = true;
   };
 
-  # NOTE: Claude Code の作業状態 (working / idle / blocked) は herdr が
-  # ネイティブに持つ。 `herdr integration install claude` を 1 度実行すると
-  # ~/.claude/settings.json に hook が入り、 サイドバーに状態が出る。
-  # 旧 zellij 構成の claude-zellij / zellij-tab-thinking.sh / zellij-tab-done.sh と
-  # /tmp/zellij-tab-* マーカーはこれで不要になったため削除した。
+  # Claude Code のタブ名に作業状態 (思考中 / 完了) を出す hook。 claude-zellij で起動した
+  # タブだけが対象で、 それ以外 (Claude デスクトップアプリ等) では何もしない。
+  # hook 自体の登録は ~/.claude/settings.json 側 (nix 管理外)。
+  home.file.".claude/hooks/zellij-tab-thinking.sh" = {
+    source = ./programs/claude-code/zellij-tab-thinking.sh;
+    executable = true;
+  };
+
+  home.file.".claude/hooks/zellij-tab-done.sh" = {
+    source = ./programs/claude-code/zellij-tab-done.sh;
+    executable = true;
+  };
+
+  # Claude Code zellij wrapper (claude-zellij command)
+  home.file.".local/bin/claude-zellij" = {
+    source = ./programs/claude-code/claude-zellij.sh;
+    executable = true;
+  };
 
   # そのディレクトリの直近セッションを --resume で開く。cwd を跨いで特定セッションを
   # 開き直したいとき用 (work.kdl の claude ペインは素の -c を使っている)
@@ -260,7 +278,7 @@ in
     executable = true;
   };
 
-  # dev-server: run long-lived dev servers inside a herdr pane/tab so the
+  # dev-server: run long-lived dev servers inside a zellij tab/pane so the
   # Claude Code harness doesn't reap them with SIGTERM(143). See the
   # dev-server skill. dev-serve-run is the internal in-pane wrapper.
   home.file.".local/bin/dev-serve-run" = {
@@ -287,7 +305,7 @@ in
     source = ./programs/claude-code/dev-server/dev-supervise.sh;
     executable = true;
   };
-  # dev-ctl: sandbox-escape front-end. Claude's Bash sandbox blocks the herdr
+  # dev-ctl: sandbox-escape front-end. Claude's Bash sandbox blocks the zellij
   # socket, so dev-up/dev-down don't work there — but scripts under ~/.claude/scripts/
   # run OUTSIDE the sandbox when invoked by direct path. Claude drives dev servers via
   # `~/.claude/scripts/dev-ctl {up|down|logs|list|supervise}`.
@@ -316,33 +334,26 @@ in
     recursive = true;
   };
 
-  # herdr 設定。 レイアウトは herdr に宣言ファイル (旧 zellij の KDL 相当) が無く、
-  # 永続セッションが構成を保持する設計なので、 作り直し用に bootstrap スクリプトを置く。
-  xdg.configFile."herdr/config.toml" = {
-    source = ./programs/herdr/config.toml;
+  # Zellij layouts (zellij --layout work / cockpit)
+  xdg.configFile."zellij/layouts" = {
+    source = ./programs/zellij/layouts;
+    recursive = true;
   };
 
-  # herdr のタブを label で引くヘルパー (close-*-tab / review-pr / pr-conflict-resolve が使う)
-  home.file.".local/bin/herdr-tab-id" = {
-    source = ./programs/herdr/herdr-tab-id.sh;
+  # zj: どのシェル (launchd / Claude の Bash / ターミナル) からでも同じ zellij サーバーに
+  # 届くよう $TMPDIR を揃え、 セッション選択・タブ検索・事前チェックをまとめたラッパー。
+  # dev-up / dev-down / dev-supervise / open-review-tab / close-*-tab /
+  # review-pr / pr-conflict-resolve が使う。
+  home.file.".local/bin/zj" = {
+    source = ./programs/zellij/zj.sh;
     executable = true;
   };
 
-  # herdr-bootstrap <work|cockpit>: 旧 zellij KDL レイアウトの作り直し用
-  home.file.".local/bin/herdr-bootstrap" = {
-    source = ./programs/herdr/bootstrap.sh;
-    executable = true;
-  };
-
-  # zellij 専用の自作ランチャー (zj-plan / sol-review-watch / zellij-tab-register) は
-  # 2026-10-01 の herdr 移行で退役し programs/zellij/_archived/ に退避した。
-  #   - zellij-tab-register: タブ名 🤖/✅ hook の共有ヘルパー → herdr がエージェント状態を
-  #     ネイティブに持つので不要
-  #   - zj-plan / sol-review-watch: 企画オーケストレーション組織タブ (KDL 生成) →
-  #     herdr に宣言レイアウトが無い。必要になったら herdr-bootstrap 方式で作り直す
-  # 旧 work.kdl / cockpit.kdl / claude-zellij も同じ場所にある。
-
-  # zellij 本体設定 (config.kdl) は 2026-10-01 に退役。 programs/zellij/_archived/config.kdl。
+  # 自作ランチャー (zj-plan / sol-review-watch / zellij-tab-register) は 2026-10-01 の
+  # herdr 移行で退役し programs/zellij/_archived/ に退避した。 2026-10-07 に zellij へ
+  # 戻したとき (上流追従) も復活させていない。 work.kdl / cockpit.kdl は layouts/ に戻した。
+  # zellij 本体設定 (config.kdl) は上流と同じく持たない (既定値で使う)。
+  # 旧版は programs/zellij/_archived/config.kdl。
 
   # Ghostty (常用ターミナル、 旧 Mac から移植)。 JetBrainsMono Nerd Font +
   # CJK をヒラギノ角ゴ ProN にマップ + Catppuccin Mocha + JIS キーボード向け
