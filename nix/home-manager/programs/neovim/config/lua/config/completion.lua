@@ -30,7 +30,6 @@ local kind_icons = {
   Event = "",
   Operator = "󰆕",
   TypeParameter = "󰅲",
-  Copilot = "",
 }
 
 cmp.setup({
@@ -66,7 +65,6 @@ cmp.setup({
       end
       -- Source
       vim_item.menu = ({
-        copilot = "[Copilot]",
         nvim_lsp = "[LSP]",
         luasnip = "[Snippet]",
         buffer = "[Buffer]",
@@ -101,7 +99,6 @@ cmp.setup({
     end, { 'i', 's' }),
   }),
   sources = cmp.config.sources({
-    { name = 'copilot', priority = 1000 },
     { name = 'nvim_lsp', priority = 900 },
     { name = 'luasnip', priority = 800 },
   }, {
@@ -111,7 +108,6 @@ cmp.setup({
   sorting = {
     priority_weight = 2,
     comparators = {
-      require("copilot_cmp.comparators").prioritize,
       cmp.config.compare.offset,
       cmp.config.compare.exact,
       cmp.config.compare.score,

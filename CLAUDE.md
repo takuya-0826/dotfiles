@@ -67,7 +67,7 @@ nix build .#darwinConfigurations.ATR-LAP-OSX-TAKUYA-MATSUMOTO.system
   - Lua-based configuration with custom keybindings
   - Everforest Dark color scheme
   
-- **nix/home-manager/programs/neovim/**: Neovim configuration (currently minimal)
+- **nix/home-manager/programs/neovim/**: Neovim configuration (軽量な編集用。 AI/IDE 系は Claude Desktop に任せ、 LSP・補完・treesitter・telescope 程度に絞っている)
 
 ## Key Configuration Details
 
@@ -131,7 +131,6 @@ When compacting, preserve the following:
 
 ## Important Notes
 
-- The Neovim configuration references a symlink to `${pwd}/conf` which points to `~/dotfiles-nix/home-manager/console/neovim/conf` - this path may need adjustment
 - WezTerm is installed via Homebrew's nightly cask, not Nix
 - The configuration includes both Nix packages and Homebrew casks for different types of applications
 
@@ -165,6 +164,8 @@ When compacting, preserve the following:
 - `close-conflict-tab <repo> <num>` → `Conflict: <repo>#<num>` タブを閉じる (pr-conflict-check 用)
 - `close-merged-review-tab <num> <repo>` → `Review: <repo>#<num>` タブを閉じる (gh-review-watcher 用)
 - `open-review-tab <url> <num> <repo>` → `Review: <repo>#<num>` タブを開いて review-pr を走らせる
+- `fire-review-routine <url> <num> <repo>` → ルーティン「PRレビュー一次請け」を /fire API で起動 (gh-review-watcher の
+  on_new_pr 既定。 トークンはキーチェーン `claude-routine-pr-review`。 失敗時は open-review-tab にフォールバック)
 - レイアウト: `zellij --layout work` / `zellij --layout cockpit` (`nix/home-manager/programs/zellij/layouts/`)
 
 参考実装: `nix/home-manager/programs/zellij/zj.sh`, `nix/home-manager/programs/claude-code/close-conflict-tab.sh`
@@ -210,6 +211,15 @@ When compacting, preserve the following:
 - 既存の兄弟ディレクトリ worktree (`<repo>-<name>` 等) はメイン Bash から検証不可 →
   サブエージェント(cwd=worktree)に投げる / `.claude/worktrees/` へ移設 / その worktree でセッション起動。
 - **モノレポはリポジトリルートをセッション cwd に** (turbo 等が兄弟パッケージに書けず失敗するため)。
+- **worktree に `.env` 等のクレデンシャルが無いとき、 Claude が自分でコピー/リンクしない** (Read の deny
+  ルールは symlink の先も見るので読めないうえ、 クレデンシャルを動かす操作は権限ポリシーに触れうる)。
+  - Claude が作る worktree (`EnterWorktree` / `--worktree` / `isolation:"worktree"`) には、 メインチェックアウト
+    直下の `.worktreeinclude` (gitignore 記法) に書いた gitignore 済みファイルを Claude Code 本体がコピーする。
+    無ければ「`.worktreeinclude` に `.env` 等を書いて」とユーザーに頼む (会社 repo に commit したくなければ
+    `.git/info/exclude` に `.worktreeinclude` を足せばよい)。
+  - 人間が作る worktree は `wt add <git worktree add の引数>` (同じ `.worktreeinclude` を読んで symlink を貼る。
+    `.worktreeinclude` が無ければ `**/.env` `**/.env.*` `**/.envrc` `**/.dev.vars`。 `WT_COPY=1` でコピー)。
+    既存の worktree には `wt seed [dir]`。 実装は `nix/home-manager/programs/git/wt.sh`。
 
 ### やってはいけない / 依頼に回すこと
 - **迂回しない**: chmod・サンドボックス外での再実行・別フラグ脱出等でサンドボックスを破らない。

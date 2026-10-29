@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 {
   # 新 PC は Determinate Systems の Nix installer を使っているので、 nix-darwin が
   # Nix を管理しようとすると衝突する。 nix.enable = false にして Determinate に任せる。
@@ -156,6 +156,19 @@
   # スクリプト自体は home-manager が ~/.local/bin に配置しているので、
   # 必要になったら手動実行するか、ここに agent を書き足して再 switch する。
   # (元の定義は git log を参照)
+
+  # 2026-10: eMudhra (emSign) の中間 CA 8 本の秘密鍵が漏えいした件の対策。
+  # Mozilla は NSS 3.131.1 で emSign ECC Root CA - G3 / ECC Root CA - C3 / Root CA - C1 を
+  # 外した (G1 は残す判断。 certifi 2026.10.23 も同じ)。 nixpkgs の cacert が
+  # それより古いとき (flake.lock が古い・ nixpkgs を pin した等) だけ自前で除外する。
+  # cacert はバンドルに無い名前を blacklist に入れるとビルドが落ちるので、 3.131.1 以降では空にする。
+  security.pki.caCertificateBlacklist =
+    lib.optionals (lib.versionOlder pkgs.cacert.version "3.131.1")
+      [
+        "emSign ECC Root CA - G3"
+        "emSign ECC Root CA - C3"
+        "emSign Root CA - C1"
+      ];
 
   security.sudo.extraConfig = ''
     takuyamatsumoto ALL=(ALL) NOPASSWD: /run/current-system/sw/bin/darwin-rebuild

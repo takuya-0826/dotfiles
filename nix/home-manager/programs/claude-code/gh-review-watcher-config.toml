@@ -18,12 +18,12 @@ command = """@notifyDesktop@ \
   -message {title} \
   -sound default"""
 
-# 新規PR検出時: yoloラベルがなければ新しいタブでClaude Codeにレビューさせる
-# (open-review-tab が zellij タブを開いて review-pr を走らせる。zellij の中から呼ばれたら
-#  同じセッションに開いてフォーカスを戻し、外からならバックグラウンドの "reviews" セッションに開く)
+# 新規PR検出時: yoloラベルがなければ Claude Code のルーティン「PRレビュー一次請け」を起動する
+# (fire-review-routine が /fire API を叩き、レビューは claude.ai のクラウドセッションで走る。
+#  トークン未設定や API エラーのときは従来の open-review-tab (zellij タブ) にフォールバック)
 [[on_new_pr]]
-name = "review-tab"
-command = """echo '{labels}' | grep -q yolo || open-review-tab '{url}' '{number}' '{repo}'"""
+name = "review-routine"
+command = """echo '{labels}' | grep -q yolo || fire-review-routine '{url}' '{number}' '{repo}' >> /tmp/gh-review-watcher-hooks.log 2>&1"""
 
 # 毎ポーリング: "yolo" ラベルがついていたらClaude Codeでレビュー判定（PR単位で1回のみ実行）
 [[on_poll]]
@@ -58,7 +58,11 @@ name = "Open CI checks (web)"
 command = "gh pr checks {number} -R {repo} --web"
 
 [[actions]]
-name = "Re-review with Claude (new tab)"
+name = "Review with routine (cloud)"
+command = "fire-review-routine '{url}' '{number}' '{repo}'"
+
+[[actions]]
+name = "Review locally (zellij tab)"
 command = "open-review-tab '{url}' '{number}' '{repo}'"
 
 [[actions]]

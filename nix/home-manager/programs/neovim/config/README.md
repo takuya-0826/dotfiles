@@ -17,8 +17,9 @@ config/
     │   └── diagnostics.lua # Diagnostic signs and settings
     └── plugins/            # Plugin-specific configurations
         ├── treesitter.lua  # Treesitter configuration
-        ├── nvim-tree.lua   # File explorer configuration
-        └── lualine.lua     # Status line configuration
+        ├── flash.lua       # Flash.nvim (jump) configuration
+        ├── gitsigns.lua    # Git signs configuration
+        └── conform.lua     # Formatter configuration
 ```
 
 ## Configuration Loading

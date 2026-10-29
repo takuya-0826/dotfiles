@@ -10,8 +10,7 @@ keymap.set({"n", "v"}, ":", ";", { desc = "Repeat last f/F/t/T" })
 keymap.set("n", "<leader>e", ":Telescope file_browser path=%:p:h select_buffer=true hidden=true respect_gitignore=false<CR>", { desc = "File browser (current dir)" })
 
 -- Telescope
-keymap.set("n", "<leader>ff", ":Telescope smart_open<CR>", { desc = "Smart open files" })
-keymap.set("n", "<leader>fo", ":Telescope find_files<CR>", { desc = "Find files (old)" })
+keymap.set("n", "<leader>ff", ":Telescope find_files<CR>", { desc = "Find files" })
 keymap.set("n", "<leader>fg", ":Telescope live_grep<CR>", { desc = "Live grep" })
 keymap.set("n", "<leader>fh", ":Telescope help_tags<CR>", { desc = "Help tags" })
 
@@ -56,12 +55,6 @@ keymap.set("n", "<C-u>", "<C-u>zz")
 keymap.set("n", "n", "nzzzv")
 keymap.set("n", "N", "Nzzzv")
 
--- Lazygit
-keymap.set("n", "<leader>lg", ":LazyGit<CR>", { desc = "Open LazyGit" })
-keymap.set("n", "<leader>lgc", ":LazyGitConfig<CR>", { desc = "LazyGit Config" })
-keymap.set("n", "<leader>lgf", ":LazyGitFilter<CR>", { desc = "LazyGit Filter" })
-keymap.set("n", "<leader>lgb", ":LazyGitFilterCurrentFile<CR>", { desc = "LazyGit Current File" })
-
 -- Git blame and signs
 keymap.set("n", "<leader>gb", ":Gitsigns toggle_current_line_blame<CR>", { desc = "Toggle git blame" })
 keymap.set("n", "<leader>gB", ":Gitsigns blame_line<CR>", { desc = "Git blame line (popup)" })
@@ -79,17 +72,6 @@ keymap.set("n", "[h", ":Gitsigns prev_hunk<CR>", { desc = "Previous git hunk" })
 -- Theme switcher (using Telescope)
 keymap.set("n", "<leader>th", ":Telescope colorscheme<CR>", { desc = "Switch theme" })
 
--- Claude Code
-keymap.set("n", "<leader>cc", ":ClaudeCode<CR>", { desc = "Toggle Claude Code" })
-keymap.set("n", "<leader>ccc", ":ClaudeCodeContinue<CR>", { desc = "Claude Code Continue" })
-keymap.set("n", "<leader>ccr", ":ClaudeCodeReview<CR>", { desc = "Claude Code Review" })
-
--- GitHub Copilot
-keymap.set("n", "<leader>cp", ":Copilot panel<CR>", { desc = "Copilot panel" })
-keymap.set("n", "<leader>cs", ":Copilot status<CR>", { desc = "Copilot status" })
-keymap.set("n", "<leader>ce", ":Copilot enable<CR>", { desc = "Copilot enable" })
-keymap.set("n", "<leader>cd", ":Copilot disable<CR>", { desc = "Copilot disable" })
-
 -- Flash.nvim navigation
 -- Override f/F/t/T for enhanced functionality
 keymap.set({ "n", "x", "o" }, "f", function() require("flash").jump({ search = { mode = "search", max_length = 1 } }) end, { desc = "Flash f" })
@@ -101,8 +83,3 @@ keymap.set({ "n", "x", "o" }, "T", function() require("flash").jump({ search = {
 keymap.set({ "n", "x", "o" }, "gf", function() require("flash").jump() end, { desc = "Flash jump (multi-char)" })
 keymap.set({ "n", "x", "o" }, "gF", function() require("flash").treesitter() end, { desc = "Flash Treesitter" })
 keymap.set("c", "<c-s>", function() require("flash").toggle() end, { desc = "Toggle Flash Search" })
-
--- No-neck-pain toggle
-keymap.set("n", "<leader>nn", ":NoNeckPain<CR>", { desc = "Toggle No Neck Pain" })
-keymap.set("n", "<leader>nw", ":NoNeckPainWidthUp<CR>", { desc = "Increase width" })
-keymap.set("n", "<leader>nW", ":NoNeckPainWidthDown<CR>", { desc = "Decrease width" })

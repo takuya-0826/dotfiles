@@ -7,7 +7,6 @@
 }:
 let
   username = "takuyamatsumoto";
-  pwd = "${config.home.homeDirectory}/dotfiles-nix/home-manager/console/neovim";
 
   # デスクトップ通知の共通ヘルパー。
   #
@@ -189,11 +188,6 @@ in
     recursive = true;
   };
 
-  # Legacy symlink for backward compatibility
-  xdg.configFile."nvim/lua/conf" = {
-    source = config.lib.file.mkOutOfStoreSymlink "${pwd}/conf";
-  };
-
   # Claude Code hooks
   home.file.".claude/hooks/notify-done.sh" = {
     source = pkgs.replaceVars ./programs/claude-code/notify-done.sh {
@@ -272,6 +266,12 @@ in
     executable = true;
   };
 
+  # Fire the "PRレビュー一次請け" Claude Code routine for a PR (triggered by gh-review-watcher)
+  home.file.".local/bin/fire-review-routine" = {
+    source = ./programs/claude-code/fire-review-routine.sh;
+    executable = true;
+  };
+
   # Close "Conflict: <repo>#<num>" tab (used by pr-conflict-resolve handoff prompt)
   home.file.".local/bin/close-conflict-tab" = {
     source = ./programs/claude-code/close-conflict-tab.sh;
@@ -338,6 +338,13 @@ in
   xdg.configFile."zellij/layouts" = {
     source = ./programs/zellij/layouts;
     recursive = true;
+  };
+
+  # wt: git worktree を作って、 メインチェックアウトの gitignore されたローカルファイル
+  # (.env 等、 .worktreeinclude で指定) を symlink で持ち込む。 `wt add <git worktree add の引数>`
+  home.file.".local/bin/wt" = {
+    source = ./programs/git/wt.sh;
+    executable = true;
   };
 
   # zj: どのシェル (launchd / Claude の Bash / ターミナル) からでも同じ zellij サーバーに
