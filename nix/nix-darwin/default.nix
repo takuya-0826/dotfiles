@@ -78,10 +78,11 @@
       # cask は Microsoft 公式インストーラなので、 会社アカウントでサインインすれば
       # ライセンスは通る。
       "microsoft-office"
+      "google-japanese-ime" # Google 日本語入力 (pkg 形式。 下の注意参照)
     ];
 
     # ⚠️ pkg 形式の cask (session-manager-plugin / microsoft-office /
-    # amazon-workspaces / logi-options+) は `sudo installer` を呼ぶため
+    # amazon-workspaces / logi-options+ / google-japanese-ime) は `sudo installer` を呼ぶため
     # パスワード入力が必要で、 非対話の switch では必ず失敗する。
     # 失敗すると `brew bundle` が異常終了して **cleanup ごとスキップされる** ので、
     # 宣言した状態が強制されなくなる。
