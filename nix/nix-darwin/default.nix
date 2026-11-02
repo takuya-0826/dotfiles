@@ -21,6 +21,38 @@
         show-recents = false;
         orientation = "bottom";
       };
+      # 入力ソース: ABC + Google 日本語入力 (ひらがな / 英数)。 Apple 標準の日本語入力は入れない。
+      # 反映はログアウト→ログイン後。 GUI で入力ソースを足しても次の switch で戻るので、
+      # 変えたいときはここを直す。
+      # ⚠️ 他社製 IME は com.apple.inputsources 側に書く。 HIToolbox にも書くとメニューに
+      # 2 個ずつ並ぶ (2026-11-02 に実際に踏んだ)。
+      CustomUserPreferences."com.apple.HIToolbox" = {
+        AppleEnabledInputSources = [
+          {
+            InputSourceKind = "Keyboard Layout";
+            "KeyboardLayout ID" = 252;
+            "KeyboardLayout Name" = "ABC";
+          }
+        ];
+      };
+      CustomUserPreferences."com.apple.inputsources" = {
+        AppleEnabledThirdPartyInputSources = [
+          {
+            "Bundle ID" = "com.google.inputmethod.Japanese";
+            InputSourceKind = "Keyboard Input Method";
+          }
+          {
+            "Bundle ID" = "com.google.inputmethod.Japanese";
+            "Input Mode" = "com.apple.inputmethod.Japanese";
+            InputSourceKind = "Input Mode";
+          }
+          {
+            "Bundle ID" = "com.google.inputmethod.Japanese";
+            "Input Mode" = "com.apple.inputmethod.Roman";
+            InputSourceKind = "Input Mode";
+          }
+        ];
+      };
     };
   };
 
