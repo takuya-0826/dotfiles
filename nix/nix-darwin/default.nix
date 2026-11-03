@@ -56,6 +56,17 @@
     };
   };
 
+  # ⌘Space は Raycast に渡すので Spotlight の ⌘Space (64) / ⌥⌘Space (65) を切る。
+  # CustomUserPreferences で AppleSymbolicHotKeys を書くと辞書ごと置き換わり他のショートカットが
+  # 消えるので、 -dict-add で 2 キーだけ上書きする。
+  system.activationScripts.postActivation.text = ''
+    for k in 64:1048576 65:1572864; do
+      sudo -u takuyamatsumoto defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add "''${k%%:*}" \
+        "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>49</integer><integer>''${k##*:}</integer></array><key>type</key><string>standard</string></dict></dict>"
+    done
+    sudo -u takuyamatsumoto /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+  '';
+
   homebrew = {
     enable = true;
     onActivation = {
