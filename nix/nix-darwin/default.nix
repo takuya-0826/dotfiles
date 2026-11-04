@@ -35,24 +35,10 @@
           }
         ];
       };
-      CustomUserPreferences."com.apple.inputsources" = {
-        AppleEnabledThirdPartyInputSources = [
-          {
-            "Bundle ID" = "com.google.inputmethod.Japanese";
-            InputSourceKind = "Keyboard Input Method";
-          }
-          {
-            "Bundle ID" = "com.google.inputmethod.Japanese";
-            "Input Mode" = "com.apple.inputmethod.Japanese";
-            InputSourceKind = "Input Mode";
-          }
-          {
-            "Bundle ID" = "com.google.inputmethod.Japanese";
-            "Input Mode" = "com.apple.inputmethod.Roman";
-            InputSourceKind = "Input Mode";
-          }
-        ];
-      };
+      # 他社製 IME (Google 日本語入力) は宣言しない。 com.apple.inputsources ドメインは macOS 26.5 で
+      # defaults write が "Could not write domain" で拒否され、 nix-darwin の activation が最後で落ちる
+      # (2026-11-04)。 GUI (システム設定 > キーボード > 入力ソース) で足した設定は、 このドメインを nix が
+      # 触らないので switch しても消えない。 宣言したい場合は defaults 以外の経路が必要。
     };
   };
 
