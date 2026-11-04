@@ -26,7 +26,7 @@ nix/home-manager/programs/claude-code/
       protocol.repo.md          リポ差分の雛形
       request.md                発注書（AC）の雛形
       progress.md               引き継ぎの雛形
-      review-log.jsonl            裁定ログのヘッダ
+      review-log.md               裁定ログ（Markdown 表）のヘッダ
       settings.python-uv.json   Stop hook / deny の雛形（言語別）
       settings.bun.json
       settings.pnpm.json
@@ -35,7 +35,7 @@ nix/home-manager/programs/claude-code/
     slice/        実装前に発注書（AC）を書き /goal を登録。高リスクなら止まる
     impl/         worktree で実装 → 証跡 → evaluator / evidence-reviewer / Sol を並列発注 → 裁定 → PR → progress.md
     sol-review/   Codex を spec / guard / attack の 3 観点で read-only 並列。2 巡目は差分のみ
-    adjudicate/   指摘を fix / issue / reject に振り分け、review-log.jsonl に記録
+    adjudicate/   指摘を fix / issue / reject に振り分け、review-log.md に記録
   agents/
     evaluator.md          実際に動かして AC を採点
     evidence-reviewer.md  差分 × AC を表で返す
@@ -45,7 +45,7 @@ nix/home-manager/programs/claude-code/
   .claude/rules/          ドメイン規則（既存のまま）
   .harness/
     protocol.md           templates/protocol.repo.md をコピーして埋める
-    requests/ reviews/ review-log.jsonl
+    requests/ reviews/ review-log.md
   progress.md
   AGENTS.md / CLAUDE.md   「開発体制は ~/.claude/harness/protocol.md」の 1 行とリンク
 ```
@@ -60,7 +60,7 @@ nix/home-manager/programs/claude-code/
   → worktree → 実装 → CI と同じコマンドを実行して証跡（SHA・コマンド・終了状態・件数・ログ位置）を出す
      （Stop hook が lint/type を強制。通らないとターンを終われない）
   → evaluator（動かす）/ evidence-reviewer（差分×AC）/ /sol-review（Codex 3 観点）を並列発注
-  → /adjudicate <slug>（fix / issue / reject → review-log.jsonl）
+  → /adjudicate <slug>（fix / issue / reject → review-log.md）
   → fix を修正 → /sol-review <slug> --pass 2（差分のみ、medium）
   → PR（Testing / Risk / How to revert）→ progress.md
 ```
@@ -89,7 +89,7 @@ ls ~/.claude/harness/protocol.md ~/.claude/skills/slice ~/.claude/agents/
 cd <repo>
 mkdir -p .harness/requests .harness/reviews .claude
 cp ~/.claude/harness/templates/protocol.repo.md .harness/protocol.md   # 空欄を埋める
-cp ~/.claude/harness/templates/review-log.jsonl  .harness/review-log.jsonl
+cp ~/.claude/harness/templates/review-log.md  .harness/review-log.md
 cp ~/.claude/harness/templates/progress.md     progress.md
 cp ~/.claude/harness/templates/settings.<lang>.json .claude/settings.json  # CI と同じコマンドに直す
 ```
@@ -115,14 +115,14 @@ G1 の切替凍結・4 波などの**プロジェクト判断**は `v2/G1-TASKS.
 | protocol を読んで守る | 「必ず」は Stop hook / deny / goal | Claude はガイドラインを読み飛ばせる。ツールは飛ばさない |
 | Sol watcher（フォルダ監視） | `/sol-review`（明示起動、3 観点並列、終了コードで完了判定、codex-exec / 公式プラグイン） | 自作ループの保守をなくす。途中読みの誤判定を防ぐ |
 | レビュアーは読むだけ | evaluator が実行して採点 | テスト・型チェックが見逃す種類のバグ |
-| 指摘は読んで終わり | review-log.jsonl に fix/issue/reject + タグ | Claude 書き × Codex レビューは精度が下がる研究結果あり。当たり率を測る |
+| 指摘は読んで終わり | review-log.md に fix/issue/reject + タグ | Claude 書き × Codex レビューは精度が下がる研究結果あり。当たり率を測る |
 | 一律 xhigh | リスク階層で深さと拓也介入を決める | 人間の時間を高リスクに集中 |
 
 継承: 成果物必須、2 パス上限、P0/P1/P2 + file:line、AC 適合で判定、発注書を実装前に、予算上限、証跡、エスカレーション条件、独立レビューの発注は主担当。
 
 ## 月 1 の見直し
 
-正典 §9。`review-log.jsonl` の集計コマンドは `/adjudicate` の末尾。
+正典 §9。`review-log.md` の集計コマンドは `/adjudicate` の末尾。
 
 ## 参考
 

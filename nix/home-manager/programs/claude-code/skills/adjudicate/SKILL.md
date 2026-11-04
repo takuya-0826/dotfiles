@@ -1,7 +1,7 @@
 ---
 name: adjudicate
 version: 2.0.0
-description: "Adjudicate review findings (Sol/Codex, evaluator, evidence-reviewer) into do-now / issue / reject per protocol.md, and append tags to .harness/review-log.jsonl so reviewer noise can be measured. Use after /sol-review."
+description: "Adjudicate review findings (Sol/Codex, evaluator, evidence-reviewer) into do-now / issue / reject per protocol.md, and append tags to .harness/review-log.md so reviewer noise can be measured. Use after /sol-review."
 ---
 
 # adjudicate — 指摘を裁定して記録する
@@ -39,7 +39,7 @@ ls -t .harness/reviews/*-<slug>-*.md | grep -v request | head -10
 
 ### Step 3: ログに追記する
 
-`.harness/review-log.jsonl`（無ければ空ファイルを作る）。1 指摘 1 行の JSON。組織ルールで `.tsv/.csv` が禁止のリポがあるため JSONL。
+`.harness/review-log.md` の Markdown 表に 1 指摘 1 行で追記する（無ければヘッダ付きで作る）。組織ルールで `.tsv/.csv/.jsonl/.ndjson` が禁止のリポがあるため Markdown。列は `ts | slug | pass | reviewer | lens | severity | file_line | decision | tag | note`。
 
 - `reviewer`: `sol` / `evaluator` / `evidence`
 - `decision`: `fix` / `issue` / `reject`
@@ -50,11 +50,17 @@ ls -t .harness/reviews/*-<slug>-*.md | grep -v request | head -10
 
 ```bash
 python3 - <<'PY'
-import json,datetime
+import datetime,os
+p=".harness/review-log.md"
+cols=["ts","slug","pass","reviewer","lens","severity","file_line","decision","tag","note"]
 row={"ts":datetime.datetime.now().isoformat(timespec="minutes"),"slug":"<slug>","pass":1,
      "reviewer":"<sol|evaluator|evidence>","lens":"<spec|guard|attack|->","severity":"<P0|P1|P2>",
      "file_line":"<path:line>","decision":"<fix|issue|reject>","tag":"<fixed|wrong|intended|minor>","note":"<短い理由>"}
-open(".harness/review-log.jsonl","a").write(json.dumps(row,ensure_ascii=False)+"\n")
+cell=lambda v: str(v).replace("|","/").replace("\n"," ")
+new=not os.path.exists(p) or os.path.getsize(p)==0
+with open(p,"a") as f:
+    if new: f.write("| "+" | ".join(cols)+" |\n|"+"---|"*len(cols)+"\n")
+    f.write("| "+" | ".join(cell(row[c]) for c in cols)+" |\n")
 PY
 ```
 
@@ -78,11 +84,14 @@ PY
 
 ```bash
 python3 - <<'PY'
-import json,collections
-n=collections.Counter(); w=collections.Counter()
-for l in open(".harness/review-log.jsonl"):
-    if not l.strip(): continue
-    r=json.loads(l); k=f'{r["reviewer"]}/{r["lens"]}'; n[k]+=1; w[k]+= r["tag"]=="wrong"
+import collections
+n=collections.Counter(); w=collections.Counter(); cols=None
+for l in open(".harness/review-log.md"):
+    l=l.strip()
+    if not l.startswith("|") or set(l)<=set("|- "): continue
+    c=[x.strip() for x in l.strip("|").split("|")]
+    if cols is None: cols=c; continue
+    r=dict(zip(cols,c)); k=f'{r["reviewer"]}/{r["lens"]}'; n[k]+=1; w[k]+= r["tag"]=="wrong"
 for k in sorted(n): print(f"{k:20s} n={n[k]:3d} wrong={w[k]:3d} ({100*w[k]/n[k]:.0f}%)")
 PY
 ```
