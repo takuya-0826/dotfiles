@@ -1,5 +1,5 @@
 {
-  "$comment": "harness v2 テンプレ (python-uv)。リポの .claude/settings.json にコピーして CI と同じ速いチェックに合わせる。重いテストは /goal 側で要求する。判断は ~/.claude/harness/protocol.md。",
+  "$comment": "harness v2 テンプレ (python-uv)。Stop hook は .venv/bin を直接呼ぶ（`uv run` は .python-version が無いと別の Python で .venv を作り直すことがある）。リポに .python-version を置き、CI と同じ uv sync で .venv を作ってから使う。",
   "permissions": {
     "deny": [
       "Read(.env)",
@@ -14,6 +14,8 @@
       "Bash(gh pr merge --admin*)"
     ],
     "allow": [
+      "Bash(.venv/bin/ruff check*)",
+      "Bash(.venv/bin/pytest*)",
       "Bash(uv run --no-sync ruff check*)",
       "Bash(uv run --no-sync pytest*)"
     ]
@@ -22,7 +24,10 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv run --no-sync ruff check . 1>&2 || exit 2" }
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && { test -x .venv/bin/ruff || { echo \"[stop-hook] .venv/bin/ruff がありません。uv sync --frozen を実行してください\" >&2; exit 2; }; } && .venv/bin/ruff check . 1>&2 || exit 2"
+          }
         ]
       }
     ]
