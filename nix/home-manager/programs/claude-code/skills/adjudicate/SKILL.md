@@ -1,7 +1,7 @@
 ---
 name: adjudicate
 version: 2.0.0
-description: "Adjudicate review findings (Sol/Codex, evaluator, evidence-reviewer) into do-now / issue / reject per protocol.md, and append tags to .harness/review-log.tsv so reviewer noise can be measured. Use after /sol-review."
+description: "Adjudicate review findings (Sol/Codex, evaluator, evidence-reviewer) into do-now / issue / reject per protocol.md, and append tags to .harness/review-log.jsonl so reviewer noise can be measured. Use after /sol-review."
 ---
 
 # adjudicate — 指摘を裁定して記録する
@@ -39,11 +39,7 @@ ls -t .harness/reviews/*-<slug>-*.md | grep -v request | head -10
 
 ### Step 3: ログに追記する
 
-`.harness/review-log.tsv`（無ければヘッダ付きで作る）。1 指摘 1 行。
-
-```
-ts	slug	pass	reviewer	lens	severity	file_line	decision	tag	note
-```
+`.harness/review-log.jsonl`（無ければ空ファイルを作る）。1 指摘 1 行の JSON。組織ルールで `.tsv/.csv` が禁止のリポがあるため JSONL。
 
 - `reviewer`: `sol` / `evaluator` / `evidence`
 - `decision`: `fix` / `issue` / `reject`
@@ -53,9 +49,13 @@ ts	slug	pass	reviewer	lens	severity	file_line	decision	tag	note
   - issue → `minor`
 
 ```bash
-printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-  "$(date +%Y-%m-%dT%H:%M)" "<slug>" "<pass>" "<reviewer>" "<lens>" "<P0|P1|P2>" "<file:line>" "<decision>" "<tag>" "<短い理由>" \
-  >> .harness/review-log.tsv
+python3 - <<'PY'
+import json,datetime
+row={"ts":datetime.datetime.now().isoformat(timespec="minutes"),"slug":"<slug>","pass":1,
+     "reviewer":"<sol|evaluator|evidence>","lens":"<spec|guard|attack|->","severity":"<P0|P1|P2>",
+     "file_line":"<path:line>","decision":"<fix|issue|reject>","tag":"<fixed|wrong|intended|minor>","note":"<短い理由>"}
+open(".harness/review-log.jsonl","a").write(json.dumps(row,ensure_ascii=False)+"\n")
+PY
 ```
 
 ### Step 4: Issue を切る
@@ -77,7 +77,14 @@ printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
 ## 月 1 の集計（拓也 or 定期タスク）
 
 ```bash
-awk -F'\t' 'NR>1{k=$4"/"$5; n[k]++; if($9=="wrong")w[k]++} END{for(k in n) printf "%-20s n=%d wrong=%d (%.0f%%)\n", k, n[k], w[k], 100*w[k]/n[k]}' .harness/review-log.tsv | sort
+python3 - <<'PY'
+import json,collections
+n=collections.Counter(); w=collections.Counter()
+for l in open(".harness/review-log.jsonl"):
+    if not l.strip(): continue
+    r=json.loads(l); k=f'{r["reviewer"]}/{r["lens"]}'; n[k]+=1; w[k]+= r["tag"]=="wrong"
+for k in sorted(n): print(f"{k:20s} n={n[k]:3d} wrong={w[k]:3d} ({100*w[k]/n[k]:.0f}%)")
+PY
 ```
 
 `wrong` 率が 40% を超える reviewer/lens は、依頼文を直すか、その観点を Claude 側に寄せる。

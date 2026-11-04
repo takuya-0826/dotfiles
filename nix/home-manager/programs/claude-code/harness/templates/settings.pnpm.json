@@ -7,7 +7,7 @@
       "Read(**/.env)",
       "Read(**/.env.*)",
       "Edit(.harness/reviews/**)",
-      "Edit(.harness/review-log.tsv)",
+      "Edit(.harness/review-log.jsonl)",
       "Bash(git push --force*)",
       "Bash(git push -f*)",
       "Bash(git commit --no-verify*)",

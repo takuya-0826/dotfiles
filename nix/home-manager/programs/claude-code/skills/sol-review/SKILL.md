@@ -80,7 +80,7 @@ request が無ければ終了。差分が空なら「レビュー対象の差分
 ```markdown
 ## 2 巡目
 前回の指摘と裁定結果:
-<.harness/review-log.tsv の該当行>
+<.harness/review-log.jsonl の該当行>
 修正差分: <前回 HEAD> → HEAD
 今回は修正差分だけを検証し、前回指摘が解消されたか（resolved / not resolved）と、新規 P0/P1 のみ報告する。
 ```
