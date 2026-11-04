@@ -97,6 +97,7 @@ for LENS in spec guard attack; do
   OUT=".harness/reviews/$TS-<slug>-$LENS.md"
   $CODEX exec -C "$PWD" --sandbox read-only --skip-git-repo-check \
     -c model_reasoning_effort="$EFFORT" \
+    -c agents.enabled=false \
     --output-last-message "$OUT" \
     "$(cat .harness/reviews/$TS-<slug>-$LENS.request.md)" \
     < /dev/null 2> ".harness/reviews/$TS-<slug>-$LENS.log" | tee ".harness/reviews/$TS-<slug>-$LENS.stdout.md" >/dev/null &
@@ -138,6 +139,15 @@ done
 - 結果: .harness/reviews/<TS>-<slug>-*.md
 - 次: /adjudicate <slug>
 ```
+
+## コミットするもの / しないもの
+
+- コミットする: `.request.md`（依頼文）と `.md`（結果）
+- **コミットしない**: `.log`（stderr）と `.stdout.md`。Codex が中で実行した `git log` 等の出力（作者名・メール）が混ざり、
+  PII 検査（credential-leak-scan / pii-bulk-records）でマージが止まる（2026-11-05 frank #1260 で実測）。
+  リポの `.gitignore` に `.harness/reviews/*.log` と `.harness/reviews/*.stdout.md` を入れる（テンプレ参照）
+- `-c agents.enabled=false` を付けるのは、リポの `.codex/config.toml` でサブエージェントが有効だとレビュアーが委任して
+  同じ結論を複数回出すため。レビューは単体で走らせる
 
 ## Notes
 

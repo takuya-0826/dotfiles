@@ -1,0 +1,3 @@
+# harness v2: レビューの生ログはコミットしない（PII 検査に引っかかる）
+.harness/reviews/*.log
+.harness/reviews/*.stdout.md

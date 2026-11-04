@@ -92,6 +92,7 @@ cp ~/.claude/harness/templates/protocol.repo.md .harness/protocol.md   # 空欄�
 cp ~/.claude/harness/templates/review-log.md  .harness/review-log.md
 cp ~/.claude/harness/templates/progress.md     progress.md
 cp ~/.claude/harness/templates/settings.<lang>.json .claude/settings.json  # CI と同じコマンドに直す
+cat ~/.claude/harness/templates/gitignore.harness >> .gitignore            # レビューの生ログは入れない
 ```
 
 `AGENTS.md`（無ければ `CLAUDE.md`）に 1 行:
