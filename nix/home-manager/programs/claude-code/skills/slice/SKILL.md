@@ -66,9 +66,11 @@ created: YYYY-MM-DD
 
 AC が 3 つ未満、または観測できない表現（「正しく動く」など）が残っていたら書き直す。
 
-### Step 4: /goal を登録する
+### Step 4: /goal の文面を出す（登録は拓也）
 
-AC と protocol の終了条件をそのまま goal にする。
+`/goal` はスラッシュコマンドなので skill の中からは実行できない（2026-11-04 に実測）。
+次の 1 行を**そのままコピーできる形**で会話に出し、拓也に貼ってもらう。無人実行（print モード・定期タスク）のときは
+起動側のプロンプトにこの文面を含める。
 
 ```
 /goal <slug>: .harness/requests/<slug>.md の AC がすべて満たされ、.harness/reviews/ に Sol と evaluator の結果があり、新規 P0/P1 がゼロで、progress.md が更新され、出力パスと検証結果が会話に出ている。12 ターンで未達なら blocker を報告して止まる。
@@ -80,7 +82,7 @@ AC と protocol の終了条件をそのまま goal にする。
 ## slice ready
 - request: .harness/requests/<slug>.md
 - risk: <tier>
-- goal: 登録済み
+- goal: 上の 1 行を貼ってください（skill からは登録できません）
 - 次: /impl <slug>
 ```
 

@@ -89,13 +89,17 @@ request が無ければ終了。差分が空なら「レビュー対象の差分
 
 ```bash
 EFFORT=xhigh   # --pass 2 なら medium
-CODEX="codex"; command -v codex-exec >/dev/null 2>&1 && CODEX="codex-exec"
+# codex-exec ラッパーは --output-last-message を落とすことがある（2026-11-04 に実測: 結果 .md が空）。
+# フラグを通せる場合だけ使い、通せなければ素の codex。どちらでも stdout を tee で .md に残す。
+CODEX="codex"
+if command -v codex-exec >/dev/null 2>&1 && codex-exec --help 2>/dev/null | grep -q -- '--output-last-message'; then CODEX="codex-exec"; fi
 for LENS in spec guard attack; do
+  OUT=".harness/reviews/$TS-<slug>-$LENS.md"
   $CODEX exec -C "$PWD" --sandbox read-only --skip-git-repo-check \
     -c model_reasoning_effort="$EFFORT" \
-    --output-last-message ".harness/reviews/$TS-<slug>-$LENS.md" \
+    --output-last-message "$OUT" \
     "$(cat .harness/reviews/$TS-<slug>-$LENS.request.md)" \
-    < /dev/null > ".harness/reviews/$TS-<slug>-$LENS.log" 2>&1 &
+    < /dev/null 2> ".harness/reviews/$TS-<slug>-$LENS.log" | tee ".harness/reviews/$TS-<slug>-$LENS.stdout.md" >/dev/null &
   echo $! >> ".harness/reviews/$TS-<slug>.pids"
 done
 ```
@@ -106,6 +110,13 @@ done
 
 ```bash
 while read -r PID; do wait "$PID" 2>/dev/null || true; done < ".harness/reviews/$TS-<slug>.pids"
+# 結果 .md が空なら stdout の写しを採用し、先頭にその旨を書く（証跡が消えないようにする）
+for LENS in spec guard attack; do
+  OUT=".harness/reviews/$TS-<slug>-$LENS.md"; ALT=".harness/reviews/$TS-<slug>-$LENS.stdout.md"
+  if [ ! -s "$OUT" ] && [ -s "$ALT" ]; then
+    { echo "<!-- --output-last-message が空だったため stdout から採取 -->"; cat "$ALT"; } > "$OUT"
+  fi
+done
 ```
 
 ### Step 4: 結果を確認して報告
