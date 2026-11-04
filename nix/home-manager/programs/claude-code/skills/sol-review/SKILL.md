@@ -9,10 +9,9 @@ description: "Run Sol (OpenAI Codex) as an independent cross-model reviewer: 3 l
 zj-plan の Sol watcher の後継。フォルダ監視はせず、明示的に起動する。
 `codex exec --sandbox read-only` なので Codex はコードを変更できない。判定は Claude が `/adjudicate` で行う。
 
-起動経路は次の優先順:
-1. リポに `~/.local/bin/codex-exec`（実効モデル・設定の確認付きラッパー）があればそれ
-2. 公式プラグイン `codex@openai-codex` が有効なら `/codex:adversarial-review --background` → `/codex:status` → `/codex:result`
-3. 素の `codex exec`（下記）
+起動は **素の `codex exec`** に固定する（`~/.local/bin/codex-exec` ラッパーは `-c` や `--output-last-message` を
+落とすことがあり、2026-11-05 に委任が止まらない・結果が空になる事故が出た）。公式プラグイン
+`/codex:adversarial-review` を使う場合も、依頼文に下の「出力ルール」と「委任禁止」を必ず貼る。
 
 どの経路でも、出力フォーマット（P0/P1/P2 + file:line + 再現条件）と観点分割はこの skill のテンプレを依頼文に貼る。
 リポの `.codex/config.toml` に reviewer 用エージェントが定義されていれば（例: frank の `reviewer`）、その developer_instructions を尊重する。
@@ -67,6 +66,10 @@ request が無ければ終了。差分が空なら「レビュー対象の差分
 ## この観点で見ること
 <lens 表の「見ること」を貼る>
 
+## 委任禁止
+サブエージェント・別担当（architect / researcher / implementer / worker 等）を起動しない。委任が必要だと思っても、
+自分で読める範囲で結論を出し、読めなかった箇所は「未検証」と明記する。
+
 ## 出力ルール
 1. 指摘は P0（致命）/ P1（重要）/ P2（改善）の重大度つき箇条書き。必ず file:line を添える
 2. 判定は「コードとして変か」ではなく「AC を満たすか」。AC が不十分ならそれを P1 で指摘する
@@ -91,13 +94,12 @@ request が無ければ終了。差分が空なら「レビュー対象の差分
 EFFORT=xhigh   # --pass 2 なら medium
 # codex-exec ラッパーは --output-last-message を落とすことがある（2026-11-04 に実測: 結果 .md が空）。
 # フラグを通せる場合だけ使い、通せなければ素の codex。どちらでも stdout を tee で .md に残す。
-CODEX="codex"
-if command -v codex-exec >/dev/null 2>&1 && codex-exec --help 2>/dev/null | grep -q -- '--output-last-message'; then CODEX="codex-exec"; fi
 for LENS in spec guard attack; do
   OUT=".harness/reviews/$TS-<slug>-$LENS.md"
-  $CODEX exec -C "$PWD" --sandbox read-only --skip-git-repo-check \
+  codex exec -C "$PWD" --sandbox read-only --skip-git-repo-check \
     -c model_reasoning_effort="$EFFORT" \
     -c agents.enabled=false \
+    -c agents.max_concurrent_threads_per_session=0 \
     --output-last-message "$OUT" \
     "$(cat .harness/reviews/$TS-<slug>-$LENS.request.md)" \
     < /dev/null 2> ".harness/reviews/$TS-<slug>-$LENS.log" | tee ".harness/reviews/$TS-<slug>-$LENS.stdout.md" >/dev/null &
@@ -154,4 +156,5 @@ done
 - `resume` を使うときはフラグを `resume <id>` の**前**に置く（後ろに置くと引数エラー）
 - `--sandbox read-only` では Codex はテストを実行できない（EPERM）。テストは Claude 側で回す
 - mise 等のシム経由で codex が黙って落ちることがある。`which codex` で実体を確認
+- 委任が本当に止まっているかは `.log` に `agent`/`spawn`/`delegat` が無いことで確認する（`grep -iE 'spawn|delegat|subagent' <log>`）
 - Codex のレート上限に当たったら、同じ依頼文を Claude のサブエージェント（`evidence-reviewer`）に渡して代替し、ログに `fallback: claude` と残す
