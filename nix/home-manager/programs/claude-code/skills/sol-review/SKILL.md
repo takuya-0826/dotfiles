@@ -92,6 +92,10 @@ request が無ければ終了。差分が空なら「レビュー対象の差分
 
 ```bash
 EFFORT=xhigh   # --pass 2 なら medium
+# レビュー用モデル: リポの .codex/config.toml の review_model があればそれ、無ければ gpt-5.6-sol。
+# 指定しないとリポ既定（frank では主担当用の gpt-6-astra）で走ってしまう（2026-11-05 実測）。
+SOL_MODEL=$(sed -n 's/^review_model *= *"\(.*\)"/\1/p' .codex/config.toml 2>/dev/null | head -1)
+SOL_MODEL="${SOL_MODEL:-gpt-5.6-sol}"
 # codex-exec ラッパーは --output-last-message を落とすことがある（2026-11-04 に実測: 結果 .md が空）。
 # フラグを通せる場合だけ使い、通せなければ素の codex。どちらでも stdout を tee で .md に残す。
 for LENS in spec guard attack; do
@@ -99,7 +103,7 @@ for LENS in spec guard attack; do
   codex exec -C "$PWD" --sandbox read-only --skip-git-repo-check \
     -c model_reasoning_effort="$EFFORT" \
     -c agents.enabled=false \
-    -c agents.max_concurrent_threads_per_session=0 \
+    -m "$SOL_MODEL" \
     --output-last-message "$OUT" \
     "$(cat .harness/reviews/$TS-<slug>-$LENS.request.md)" \
     < /dev/null 2> ".harness/reviews/$TS-<slug>-$LENS.log" | tee ".harness/reviews/$TS-<slug>-$LENS.stdout.md" >/dev/null &
@@ -152,6 +156,8 @@ done
   同じ結論を複数回出すため。レビューは単体で走らせる
 
 ## Notes
+
+- `-m` は必ず付ける（上の `SOL_MODEL`）。`-c agents.enabled=false` は素の `codex` でのみ効く（2026-11-05 確認）。`agents.max_concurrent_threads_per_session=0` は不正値（最小 1）なので使わない
 
 - `resume` を使うときはフラグを `resume <id>` の**前**に置く（後ろに置くと引数エラー）
 - `--sandbox read-only` では Codex はテストを実行できない（EPERM）。テストは Claude 側で回す
