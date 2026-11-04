@@ -1,0 +1,30 @@
+{
+  "$comment": "harness v2 テンプレ (python-uv)。リポの .claude/settings.json にコピーして CI と同じ速いチェックに合わせる。重いテストは /goal 側で要求する。判断は ~/.claude/harness/protocol.md。",
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(.harness/reviews/**)",
+      "Edit(.harness/review-log.tsv)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git commit --no-verify*)",
+      "Bash(gh pr merge --admin*)"
+    ],
+    "allow": [
+      "Bash(uv run --no-sync ruff check*)",
+      "Bash(uv run --no-sync pytest*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv run --no-sync ruff check . 1>&2 || exit 2" }
+        ]
+      }
+    ]
+  }
+}

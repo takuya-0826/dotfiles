@@ -1,0 +1,34 @@
+{
+  "$comment": "harness v2 テンプレ (go)。リポの .claude/settings.json にコピーして CI と同じ速いチェックに合わせる。重いテストは /goal 側で要求する。判断は ~/.claude/harness/protocol.md。",
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(.harness/reviews/**)",
+      "Edit(.harness/review-log.tsv)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git commit --no-verify*)",
+      "Bash(gh pr merge --admin*)"
+    ],
+    "allow": [
+      "Bash(go vet*)",
+      "Bash(go test*)",
+      "Bash(go build*)",
+      "Bash(gofmt*)",
+      "Bash(make test*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "cd \"$CLAUDE_PROJECT_DIR\" && test -z \"$(gofmt -l .)\" 1>&2 || { gofmt -l . 1>&2; exit 2; }" },
+          { "type": "command", "command": "cd \"$CLAUDE_PROJECT_DIR\" && go vet ./... 1>&2 || exit 2" }
+        ]
+      }
+    ]
+  }
+}

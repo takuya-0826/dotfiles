@@ -334,6 +334,18 @@ in
     recursive = true;
   };
 
+  # Claude Code subagents (harness v2: evaluator / evidence-reviewer)。 docs/claude-code/harness-v2.md
+  home.file.".claude/agents" = {
+    source = ./programs/claude-code/agents;
+    recursive = true;
+  };
+
+  # Claude Code harness v2: 正典 protocol.md と言語別テンプレ (~/.claude/harness/)。 docs/claude-code/harness-v2.md
+  home.file.".claude/harness" = {
+    source = ./programs/claude-code/harness;
+    recursive = true;
+  };
+
   # Zellij layouts (zellij --layout work / cockpit)
   xdg.configFile."zellij/layouts" = {
     source = ./programs/zellij/layouts;
